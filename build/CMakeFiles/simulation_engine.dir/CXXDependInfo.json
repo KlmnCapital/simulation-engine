@@ -1,0 +1,236 @@
+{
+	"bmi-installation" : null,
+	"compiler-frontend-variant" : "GNU",
+	"compiler-id" : "GNU",
+	"compiler-simulate-id" : "",
+	"config" : "Release",
+	"cxx-modules" : 
+	{
+		"CMakeFiles/simulation_engine.dir/include/simulation_engine/engine.cppm.o" : 
+		{
+			"bmi-only" : false,
+			"destination" : null,
+			"name" : "CXX_MODULES",
+			"relative-directory" : "include/simulation_engine",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/include/simulation_engine/engine.cppm",
+			"type" : "CXX_MODULES",
+			"visibility" : "PUBLIC"
+		},
+		"CMakeFiles/simulation_engine.dir/include/simulation_engine/market_data.cppm.o" : 
+		{
+			"bmi-only" : false,
+			"destination" : null,
+			"name" : "CXX_MODULES",
+			"relative-directory" : "include/simulation_engine",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/include/simulation_engine/market_data.cppm",
+			"type" : "CXX_MODULES",
+			"visibility" : "PUBLIC"
+		},
+		"CMakeFiles/simulation_engine.dir/include/simulation_engine/order_placement.cppm.o" : 
+		{
+			"bmi-only" : false,
+			"destination" : null,
+			"name" : "CXX_MODULES",
+			"relative-directory" : "include/simulation_engine",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/include/simulation_engine/order_placement.cppm",
+			"type" : "CXX_MODULES",
+			"visibility" : "PUBLIC"
+		},
+		"CMakeFiles/simulation_engine.dir/include/simulation_engine/portfolio.cppm.o" : 
+		{
+			"bmi-only" : false,
+			"destination" : null,
+			"name" : "CXX_MODULES",
+			"relative-directory" : "include/simulation_engine",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/include/simulation_engine/portfolio.cppm",
+			"type" : "CXX_MODULES",
+			"visibility" : "PUBLIC"
+		},
+		"CMakeFiles/simulation_engine.dir/include/simulation_engine/quote.cppm.o" : 
+		{
+			"bmi-only" : false,
+			"destination" : null,
+			"name" : "CXX_MODULES",
+			"relative-directory" : "include/simulation_engine",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/include/simulation_engine/quote.cppm",
+			"type" : "CXX_MODULES",
+			"visibility" : "PUBLIC"
+		},
+		"CMakeFiles/simulation_engine.dir/include/simulation_engine/run_params.cppm.o" : 
+		{
+			"bmi-only" : false,
+			"destination" : null,
+			"name" : "CXX_MODULES",
+			"relative-directory" : "include/simulation_engine",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/include/simulation_engine/run_params.cppm",
+			"type" : "CXX_MODULES",
+			"visibility" : "PUBLIC"
+		},
+		"CMakeFiles/simulation_engine.dir/include/simulation_engine/simulation_engine.cppm.o" : 
+		{
+			"bmi-only" : false,
+			"destination" : null,
+			"name" : "CXX_MODULES",
+			"relative-directory" : "include/simulation_engine",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/include/simulation_engine/simulation_engine.cppm",
+			"type" : "CXX_MODULES",
+			"visibility" : "PUBLIC"
+		},
+		"CMakeFiles/simulation_engine.dir/include/simulation_engine/statistics.cppm.o" : 
+		{
+			"bmi-only" : false,
+			"destination" : null,
+			"name" : "CXX_MODULES",
+			"relative-directory" : "include/simulation_engine",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/include/simulation_engine/statistics.cppm",
+			"type" : "CXX_MODULES",
+			"visibility" : "PUBLIC"
+		},
+		"CMakeFiles/simulation_engine.dir/include/simulation_engine/strategy_interface.cppm.o" : 
+		{
+			"bmi-only" : false,
+			"destination" : null,
+			"name" : "CXX_MODULES",
+			"relative-directory" : "include/simulation_engine",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/include/simulation_engine/strategy_interface.cppm",
+			"type" : "CXX_MODULES",
+			"visibility" : "PUBLIC"
+		},
+		"CMakeFiles/simulation_engine.dir/include/simulation_engine/types.cppm.o" : 
+		{
+			"bmi-only" : false,
+			"destination" : null,
+			"name" : "CXX_MODULES",
+			"relative-directory" : "include/simulation_engine",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/include/simulation_engine/types.cppm",
+			"type" : "CXX_MODULES",
+			"visibility" : "PUBLIC"
+		},
+		"CMakeFiles/simulation_engine.dir/lib/datetime/include/datetime/datetime.cppm.o" : 
+		{
+			"bmi-only" : false,
+			"destination" : null,
+			"name" : "CXX_MODULES",
+			"relative-directory" : "lib/datetime/include/datetime",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/lib/datetime/include/datetime/datetime.cppm",
+			"type" : "CXX_MODULES",
+			"visibility" : "PUBLIC"
+		},
+		"CMakeFiles/simulation_engine.dir/lib/datetime/include/datetime/datetime_date.cppm.o" : 
+		{
+			"bmi-only" : false,
+			"destination" : null,
+			"name" : "CXX_MODULES",
+			"relative-directory" : "lib/datetime/include/datetime",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/lib/datetime/include/datetime/datetime_date.cppm",
+			"type" : "CXX_MODULES",
+			"visibility" : "PUBLIC"
+		},
+		"CMakeFiles/simulation_engine.dir/lib/datetime/include/datetime/datetime_datetime.cppm.o" : 
+		{
+			"bmi-only" : false,
+			"destination" : null,
+			"name" : "CXX_MODULES",
+			"relative-directory" : "lib/datetime/include/datetime",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/lib/datetime/include/datetime/datetime_datetime.cppm",
+			"type" : "CXX_MODULES",
+			"visibility" : "PUBLIC"
+		},
+		"CMakeFiles/simulation_engine.dir/lib/datetime/include/datetime/datetime_duration.cppm.o" : 
+		{
+			"bmi-only" : false,
+			"destination" : null,
+			"name" : "CXX_MODULES",
+			"relative-directory" : "lib/datetime/include/datetime",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/lib/datetime/include/datetime/datetime_duration.cppm",
+			"type" : "CXX_MODULES",
+			"visibility" : "PUBLIC"
+		},
+		"CMakeFiles/simulation_engine.dir/lib/datetime/include/datetime/datetime_time.cppm.o" : 
+		{
+			"bmi-only" : false,
+			"destination" : null,
+			"name" : "CXX_MODULES",
+			"relative-directory" : "lib/datetime/include/datetime",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/lib/datetime/include/datetime/datetime_time.cppm",
+			"type" : "CXX_MODULES",
+			"visibility" : "PUBLIC"
+		},
+		"CMakeFiles/simulation_engine.dir/lib/datetime/include/datetime/datetime_types.cppm.o" : 
+		{
+			"bmi-only" : false,
+			"destination" : null,
+			"name" : "CXX_MODULES",
+			"relative-directory" : "lib/datetime/include/datetime",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/lib/datetime/include/datetime/datetime_types.cppm",
+			"type" : "CXX_MODULES",
+			"visibility" : "PUBLIC"
+		}
+	},
+	"database-info" : null,
+	"dir-cur-bld" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/build",
+	"dir-cur-src" : "/home/nemeleks/kelemen_capital/dev/simulation_engine",
+	"dir-top-bld" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/build",
+	"dir-top-src" : "/home/nemeleks/kelemen_capital/dev/simulation_engine",
+	"exports" : [],
+	"forward-modules-from-target-dirs" : [],
+	"include-dirs" : 
+	[
+		"/home/nemeleks/kelemen_capital/dev/simulation_engine/include",
+		"/home/nemeleks/kelemen_capital/dev/simulation_engine/lib/datetime/include"
+	],
+	"language" : "CXX",
+	"linked-target-dirs" : 
+	[
+		"/home/nemeleks/kelemen_capital/dev/simulation_engine/build/CMakeFiles/__CMAKE__CXX23@synth_17ca77cecb33.dir"
+	],
+	"module-dir" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/build/CMakeFiles/simulation_engine.dir",
+	"sources" : 
+	{
+		"CMakeFiles/simulation_engine.dir/lib/datetime/src/date.cpp.o" : 
+		{
+			"language" : "CXX",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/lib/datetime/src/date.cpp"
+		},
+		"CMakeFiles/simulation_engine.dir/lib/datetime/src/datetime.cpp.o" : 
+		{
+			"language" : "CXX",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/lib/datetime/src/datetime.cpp"
+		},
+		"CMakeFiles/simulation_engine.dir/lib/datetime/src/duration.cpp.o" : 
+		{
+			"language" : "CXX",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/lib/datetime/src/duration.cpp"
+		},
+		"CMakeFiles/simulation_engine.dir/lib/datetime/src/time.cpp.o" : 
+		{
+			"language" : "CXX",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/lib/datetime/src/time.cpp"
+		},
+		"CMakeFiles/simulation_engine.dir/src/engine.cpp.o" : 
+		{
+			"language" : "CXX",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/src/engine.cpp"
+		},
+		"CMakeFiles/simulation_engine.dir/src/market_data.cpp.o" : 
+		{
+			"language" : "CXX",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/src/market_data.cpp"
+		},
+		"CMakeFiles/simulation_engine.dir/src/portfolio.cpp.o" : 
+		{
+			"language" : "CXX",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/src/portfolio.cpp"
+		},
+		"CMakeFiles/simulation_engine.dir/src/statistics.cpp.o" : 
+		{
+			"language" : "CXX",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/src/statistics.cpp"
+		},
+		"CMakeFiles/simulation_engine.dir/src/strategy_interface.cpp.o" : 
+		{
+			"language" : "CXX",
+			"source" : "/home/nemeleks/kelemen_capital/dev/simulation_engine/src/strategy_interface.cpp"
+		}
+	}
+}

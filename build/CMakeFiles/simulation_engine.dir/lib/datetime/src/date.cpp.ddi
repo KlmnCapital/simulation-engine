@@ -1,0 +1,18 @@
+{
+"rules": [
+{
+"primary-output": "CMakeFiles/simulation_engine.dir/lib/datetime/src/date.cpp.o",
+"requires": [
+{
+"logical-name": "datetime"
+}
+,
+{
+"logical-name": "std"
+}
+]
+}
+],
+"version": 0,
+"revision": 0
+}

@@ -1,0 +1,36 @@
+{
+"rules": [
+{
+"primary-output": "CMakeFiles/simulation_engine.dir/include/simulation_engine/strategy_interface.cppm.o",
+"provides": [
+{
+"logical-name": "simulation_engine:strategy_interface",
+"is-interface": true
+}
+],
+"requires": [
+{
+"logical-name": "simulation_engine:types"
+}
+,
+{
+"logical-name": "simulation_engine:order_placement"
+}
+,
+{
+"logical-name": "simulation_engine:quote"
+}
+,
+{
+"logical-name": "std"
+}
+,
+{
+"logical-name": "simulation_engine:portfolio"
+}
+]
+}
+],
+"version": 0,
+"revision": 0
+}

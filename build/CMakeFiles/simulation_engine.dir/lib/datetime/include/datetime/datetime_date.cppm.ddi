@@ -1,0 +1,28 @@
+{
+"rules": [
+{
+"primary-output": "CMakeFiles/simulation_engine.dir/lib/datetime/include/datetime/datetime_date.cppm.o",
+"provides": [
+{
+"logical-name": "datetime:date",
+"is-interface": true
+}
+],
+"requires": [
+{
+"logical-name": "datetime:types"
+}
+,
+{
+"logical-name": "std"
+}
+,
+{
+"logical-name": "datetime:duration"
+}
+]
+}
+],
+"version": 0,
+"revision": 0
+}

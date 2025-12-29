@@ -1,0 +1,22 @@
+{
+"rules": [
+{
+"primary-output": "CMakeFiles/market_order_example.dir/examples/market_order_example.cpp.o",
+"requires": [
+{
+"logical-name": "simulation_engine"
+}
+,
+{
+"logical-name": "datetime"
+}
+,
+{
+"logical-name": "std"
+}
+]
+}
+],
+"version": 0,
+"revision": 0
+}

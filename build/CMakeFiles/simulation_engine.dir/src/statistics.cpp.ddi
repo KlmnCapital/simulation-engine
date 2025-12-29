@@ -1,0 +1,18 @@
+{
+"rules": [
+{
+"primary-output": "CMakeFiles/simulation_engine.dir/src/statistics.cpp.o",
+"requires": [
+{
+"logical-name": "simulation_engine"
+}
+,
+{
+"logical-name": "std"
+}
+]
+}
+],
+"version": 0,
+"revision": 0
+}

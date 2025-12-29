@@ -1,0 +1,52 @@
+{
+"rules": [
+{
+"primary-output": "CMakeFiles/simulation_engine.dir/include/simulation_engine/simulation_engine.cppm.o",
+"provides": [
+{
+"logical-name": "simulation_engine",
+"is-interface": true
+}
+],
+"requires": [
+{
+"logical-name": "simulation_engine:portfolio"
+}
+,
+{
+"logical-name": "simulation_engine:engine"
+}
+,
+{
+"logical-name": "simulation_engine:market_data"
+}
+,
+{
+"logical-name": "simulation_engine:statistics"
+}
+,
+{
+"logical-name": "simulation_engine:run_params"
+}
+,
+{
+"logical-name": "simulation_engine:quote"
+}
+,
+{
+"logical-name": "simulation_engine:types"
+}
+,
+{
+"logical-name": "simulation_engine:order_placement"
+}
+,
+{
+"logical-name": "simulation_engine:strategy_interface"
+}
+]
+}
+],
+"version": 0,
+"revision": 0
+}

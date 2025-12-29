@@ -1,0 +1,14 @@
+{
+"rules": [
+{
+"primary-output": "CMakeFiles/simulation_engine.dir/src/strategy_interface.cpp.o",
+"requires": [
+{
+"logical-name": "simulation_engine"
+}
+]
+}
+],
+"version": 0,
+"revision": 0
+}

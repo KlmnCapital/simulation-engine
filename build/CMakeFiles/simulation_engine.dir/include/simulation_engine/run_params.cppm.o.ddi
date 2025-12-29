@@ -1,0 +1,24 @@
+{
+"rules": [
+{
+"primary-output": "CMakeFiles/simulation_engine.dir/include/simulation_engine/run_params.cppm.o",
+"provides": [
+{
+"logical-name": "simulation_engine:run_params",
+"is-interface": true
+}
+],
+"requires": [
+{
+"logical-name": "simulation_engine:types"
+}
+,
+{
+"logical-name": "std"
+}
+]
+}
+],
+"version": 0,
+"revision": 0
+}

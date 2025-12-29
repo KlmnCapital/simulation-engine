@@ -1,0 +1,32 @@
+{
+"rules": [
+{
+"primary-output": "CMakeFiles/simulation_engine.dir/include/simulation_engine/market_data.cppm.o",
+"provides": [
+{
+"logical-name": "simulation_engine:market_data",
+"is-interface": true
+}
+],
+"requires": [
+{
+"logical-name": "datetime"
+}
+,
+{
+"logical-name": "simulation_engine:types"
+}
+,
+{
+"logical-name": "std"
+}
+,
+{
+"logical-name": "simulation_engine:quote"
+}
+]
+}
+],
+"version": 0,
+"revision": 0
+}

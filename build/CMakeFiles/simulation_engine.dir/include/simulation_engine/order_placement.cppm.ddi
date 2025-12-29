@@ -1,0 +1,20 @@
+{
+"rules": [
+{
+"primary-output": "CMakeFiles/simulation_engine.dir/include/simulation_engine/order_placement.cppm.o",
+"provides": [
+{
+"logical-name": "simulation_engine:order_placement",
+"is-interface": true
+}
+],
+"requires": [
+{
+"logical-name": "simulation_engine:types"
+}
+]
+}
+],
+"version": 0,
+"revision": 0
+}

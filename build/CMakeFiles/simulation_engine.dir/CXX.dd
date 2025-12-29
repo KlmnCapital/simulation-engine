@@ -1,0 +1,67 @@
+ninja_dyndep_version = 1.0
+build CMakeFiles/simulation_engine.dir/src/market_data.cpp.o: dyndep | CMakeFiles/simulation_engine.dir/simulation_engine.gcm CMakeFiles/__CMAKE__CXX23@synth_17ca77cecb33.dir/7e51e9865fa1.bmi
+
+build CMakeFiles/simulation_engine.dir/src/engine.cpp.o: dyndep | CMakeFiles/simulation_engine.dir/simulation_engine.gcm CMakeFiles/__CMAKE__CXX23@synth_17ca77cecb33.dir/7e51e9865fa1.bmi
+
+build CMakeFiles/simulation_engine.dir/src/statistics.cpp.o: dyndep | CMakeFiles/simulation_engine.dir/simulation_engine.gcm CMakeFiles/__CMAKE__CXX23@synth_17ca77cecb33.dir/7e51e9865fa1.bmi
+
+build CMakeFiles/simulation_engine.dir/src/portfolio.cpp.o: dyndep | CMakeFiles/simulation_engine.dir/simulation_engine.gcm CMakeFiles/__CMAKE__CXX23@synth_17ca77cecb33.dir/7e51e9865fa1.bmi
+
+build CMakeFiles/simulation_engine.dir/src/strategy_interface.cpp.o: dyndep | CMakeFiles/simulation_engine.dir/simulation_engine.gcm
+
+build CMakeFiles/simulation_engine.dir/lib/datetime/src/date.cpp.o: dyndep | CMakeFiles/simulation_engine.dir/datetime.gcm CMakeFiles/__CMAKE__CXX23@synth_17ca77cecb33.dir/7e51e9865fa1.bmi
+
+build CMakeFiles/simulation_engine.dir/lib/datetime/src/datetime.cpp.o: dyndep | CMakeFiles/simulation_engine.dir/datetime.gcm CMakeFiles/__CMAKE__CXX23@synth_17ca77cecb33.dir/7e51e9865fa1.bmi
+
+build CMakeFiles/simulation_engine.dir/lib/datetime/src/duration.cpp.o: dyndep | CMakeFiles/simulation_engine.dir/datetime.gcm CMakeFiles/__CMAKE__CXX23@synth_17ca77cecb33.dir/7e51e9865fa1.bmi
+
+build CMakeFiles/simulation_engine.dir/lib/datetime/src/time.cpp.o: dyndep | CMakeFiles/simulation_engine.dir/datetime.gcm CMakeFiles/__CMAKE__CXX23@synth_17ca77cecb33.dir/7e51e9865fa1.bmi
+
+build CMakeFiles/simulation_engine.dir/include/simulation_engine/simulation_engine.cppm.o | CMakeFiles/simulation_engine.dir/simulation_engine.gcm: dyndep | CMakeFiles/simulation_engine.dir/simulation_engine-portfolio.gcm CMakeFiles/simulation_engine.dir/simulation_engine-types.gcm CMakeFiles/simulation_engine.dir/simulation_engine-engine.gcm CMakeFiles/simulation_engine.dir/simulation_engine-market_data.gcm CMakeFiles/simulation_engine.dir/simulation_engine-order_placement.gcm CMakeFiles/simulation_engine.dir/simulation_engine-run_params.gcm CMakeFiles/simulation_engine.dir/simulation_engine-statistics.gcm CMakeFiles/simulation_engine.dir/simulation_engine-quote.gcm CMakeFiles/simulation_engine.dir/simulation_engine-strategy_interface.gcm
+  restat = 1
+
+build CMakeFiles/simulation_engine.dir/include/simulation_engine/types.cppm.o | CMakeFiles/simulation_engine.dir/simulation_engine-types.gcm: dyndep | CMakeFiles/__CMAKE__CXX23@synth_17ca77cecb33.dir/7e51e9865fa1.bmi
+  restat = 1
+
+build CMakeFiles/simulation_engine.dir/include/simulation_engine/quote.cppm.o | CMakeFiles/simulation_engine.dir/simulation_engine-quote.gcm: dyndep | CMakeFiles/simulation_engine.dir/simulation_engine-types.gcm CMakeFiles/__CMAKE__CXX23@synth_17ca77cecb33.dir/7e51e9865fa1.bmi
+  restat = 1
+
+build CMakeFiles/simulation_engine.dir/include/simulation_engine/market_data.cppm.o | CMakeFiles/simulation_engine.dir/simulation_engine-market_data.gcm: dyndep | CMakeFiles/simulation_engine.dir/datetime.gcm CMakeFiles/simulation_engine.dir/simulation_engine-types.gcm CMakeFiles/simulation_engine.dir/simulation_engine-quote.gcm CMakeFiles/__CMAKE__CXX23@synth_17ca77cecb33.dir/7e51e9865fa1.bmi
+  restat = 1
+
+build CMakeFiles/simulation_engine.dir/include/simulation_engine/engine.cppm.o | CMakeFiles/simulation_engine.dir/simulation_engine-engine.gcm: dyndep | CMakeFiles/simulation_engine.dir/simulation_engine-market_data.gcm CMakeFiles/simulation_engine.dir/simulation_engine-run_params.gcm CMakeFiles/simulation_engine.dir/simulation_engine-types.gcm CMakeFiles/simulation_engine.dir/simulation_engine-strategy_interface.gcm CMakeFiles/simulation_engine.dir/simulation_engine-statistics.gcm CMakeFiles/simulation_engine.dir/simulation_engine-portfolio.gcm CMakeFiles/simulation_engine.dir/simulation_engine-order_placement.gcm CMakeFiles/simulation_engine.dir/simulation_engine-quote.gcm CMakeFiles/__CMAKE__CXX23@synth_17ca77cecb33.dir/7e51e9865fa1.bmi
+  restat = 1
+
+build CMakeFiles/simulation_engine.dir/include/simulation_engine/portfolio.cppm.o | CMakeFiles/simulation_engine.dir/simulation_engine-portfolio.gcm: dyndep | CMakeFiles/simulation_engine.dir/simulation_engine-types.gcm CMakeFiles/simulation_engine.dir/simulation_engine-order_placement.gcm CMakeFiles/__CMAKE__CXX23@synth_17ca77cecb33.dir/7e51e9865fa1.bmi
+  restat = 1
+
+build CMakeFiles/simulation_engine.dir/include/simulation_engine/statistics.cppm.o | CMakeFiles/simulation_engine.dir/simulation_engine-statistics.gcm: dyndep | CMakeFiles/simulation_engine.dir/simulation_engine-order_placement.gcm CMakeFiles/simulation_engine.dir/simulation_engine-portfolio.gcm CMakeFiles/simulation_engine.dir/simulation_engine-types.gcm CMakeFiles/__CMAKE__CXX23@synth_17ca77cecb33.dir/7e51e9865fa1.bmi CMakeFiles/simulation_engine.dir/simulation_engine-run_params.gcm
+  restat = 1
+
+build CMakeFiles/simulation_engine.dir/include/simulation_engine/strategy_interface.cppm.o | CMakeFiles/simulation_engine.dir/simulation_engine-strategy_interface.gcm: dyndep | CMakeFiles/simulation_engine.dir/simulation_engine-types.gcm CMakeFiles/simulation_engine.dir/simulation_engine-order_placement.gcm CMakeFiles/simulation_engine.dir/simulation_engine-quote.gcm CMakeFiles/__CMAKE__CXX23@synth_17ca77cecb33.dir/7e51e9865fa1.bmi CMakeFiles/simulation_engine.dir/simulation_engine-portfolio.gcm
+  restat = 1
+
+build CMakeFiles/simulation_engine.dir/include/simulation_engine/order_placement.cppm.o | CMakeFiles/simulation_engine.dir/simulation_engine-order_placement.gcm: dyndep | CMakeFiles/simulation_engine.dir/simulation_engine-types.gcm
+  restat = 1
+
+build CMakeFiles/simulation_engine.dir/include/simulation_engine/run_params.cppm.o | CMakeFiles/simulation_engine.dir/simulation_engine-run_params.gcm: dyndep | CMakeFiles/simulation_engine.dir/simulation_engine-types.gcm CMakeFiles/__CMAKE__CXX23@synth_17ca77cecb33.dir/7e51e9865fa1.bmi
+  restat = 1
+
+build CMakeFiles/simulation_engine.dir/lib/datetime/include/datetime/datetime.cppm.o | CMakeFiles/simulation_engine.dir/datetime.gcm: dyndep | CMakeFiles/simulation_engine.dir/datetime-duration.gcm CMakeFiles/simulation_engine.dir/datetime-date.gcm CMakeFiles/simulation_engine.dir/datetime-time.gcm CMakeFiles/simulation_engine.dir/datetime-datetime.gcm CMakeFiles/simulation_engine.dir/datetime-types.gcm
+  restat = 1
+
+build CMakeFiles/simulation_engine.dir/lib/datetime/include/datetime/datetime_date.cppm.o | CMakeFiles/simulation_engine.dir/datetime-date.gcm: dyndep | CMakeFiles/simulation_engine.dir/datetime-duration.gcm CMakeFiles/simulation_engine.dir/datetime-types.gcm CMakeFiles/__CMAKE__CXX23@synth_17ca77cecb33.dir/7e51e9865fa1.bmi
+  restat = 1
+
+build CMakeFiles/simulation_engine.dir/lib/datetime/include/datetime/datetime_datetime.cppm.o | CMakeFiles/simulation_engine.dir/datetime-datetime.gcm: dyndep | CMakeFiles/simulation_engine.dir/datetime-types.gcm CMakeFiles/simulation_engine.dir/datetime-date.gcm CMakeFiles/simulation_engine.dir/datetime-duration.gcm CMakeFiles/__CMAKE__CXX23@synth_17ca77cecb33.dir/7e51e9865fa1.bmi
+  restat = 1
+
+build CMakeFiles/simulation_engine.dir/lib/datetime/include/datetime/datetime_duration.cppm.o | CMakeFiles/simulation_engine.dir/datetime-duration.gcm: dyndep | CMakeFiles/simulation_engine.dir/datetime-types.gcm CMakeFiles/__CMAKE__CXX23@synth_17ca77cecb33.dir/7e51e9865fa1.bmi
+  restat = 1
+
+build CMakeFiles/simulation_engine.dir/lib/datetime/include/datetime/datetime_time.cppm.o | CMakeFiles/simulation_engine.dir/datetime-time.gcm: dyndep | CMakeFiles/__CMAKE__CXX23@synth_17ca77cecb33.dir/7e51e9865fa1.bmi
+  restat = 1
+
+build CMakeFiles/simulation_engine.dir/lib/datetime/include/datetime/datetime_types.cppm.o | CMakeFiles/simulation_engine.dir/datetime-types.gcm: dyndep | CMakeFiles/__CMAKE__CXX23@synth_17ca77cecb33.dir/7e51e9865fa1.bmi
+  restat = 1
+
