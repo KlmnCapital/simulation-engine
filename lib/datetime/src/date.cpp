@@ -176,6 +176,19 @@ namespace datetime {
         return Date(oss.str());
     }
 
+    int Date::dayOfWeek() const {
+        return getDayOfWeek(year, month, day);
+    }
+
+    int Date::dayOfWeek(const int& y, int m, int d) {
+        return getDayOfWeek(y, m, d);
+    }
+
+    bool Date::isWeekend() const {
+        int dow = dayOfWeek();
+        return (dow == 0 || dow == 6);
+    }
+
     // Comparison operators implementation
     bool Date::operator==(const Date& other) const {
         return this->toMillisecondsSinceEpoch() == other.toMillisecondsSinceEpoch();

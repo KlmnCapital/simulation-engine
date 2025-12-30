@@ -50,7 +50,7 @@ RunParams setRunParams() {
     RunParams params;
     params.symbols = {SymbolId{1}};              // Simulate symbol 1
     params.depth = Depth{10};                    // Use 10 price levels
-    params.startingCash = Ticks{1'000'000'000};  // Start with $100
+    params.startingCash = Ticks{10'000'000};  // Start with $1,000
     params.commissionPerShareMaker = Ticks{0};   // No maker fees for testing
     params.commissionPerShareTaker = Ticks{0};   // No taker fees for testing
     params.strategyName = "DataCompressionTest";
@@ -65,6 +65,10 @@ RunParams setRunParams() {
     params.sendLatencyNanoseconds = 5'000'000'000;     // 5 seconds
     params.receiveLatencyNanoseconds = 5'000'000'000;  // 5 seconds (total: 10 seconds)
     params.interestRate = Percentage{5};               // 5% annual interest rate
+
+    params.enforceTradingHours = true;
+    params.allowExtendedHoursTrading = true;
+    params.daylightSavings = true;
 
     return params;
 }

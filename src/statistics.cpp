@@ -111,7 +111,7 @@ namespace sim {
     std::string Statistics<depth>::formatTicksAsDollars(Ticks ticks) const {
         std::ostringstream oss;
         oss << std::fixed << std::setprecision(2) << "$"
-            << (static_cast<double>(ticks.value()) / 10'000.0);
+            << (static_cast<double>(ticks.value()) / 1'000'000.0);
         return oss.str();
     }
 

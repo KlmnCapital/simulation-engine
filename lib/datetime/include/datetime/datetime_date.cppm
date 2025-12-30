@@ -36,11 +36,16 @@ export namespace datetime {
         */
         Date(const Date& other);
 
-        // Static methods
         /*
         * Get today's date (UTC)
         */
         static Date today();
+
+
+        Date firstOfMonth() const;
+
+        // Get date X days ago
+        Date daysAgo(int days) const;
 
         // Operators
         /*
@@ -63,6 +68,20 @@ export namespace datetime {
         */
         string toString() const;
 
+        /*
+        * Returns the day of the week (0 = Sunday, 6 = Saturday)
+        */
+        int dayOfWeek() const;
+
+        bool isWeekend() const;
+
+        static int dayOfWeek(const int& y, int m, int d);
+
+        /*
+        * Converts date to milliseconds since Unix epoch (UTC)
+        */
+        long long toMillisecondsSinceEpoch() const;
+
         // Comparison operators
         bool operator==(const Date& other) const;
         bool operator!=(const Date& other) const;
@@ -70,16 +89,6 @@ export namespace datetime {
         bool operator<=(const Date& other) const;
         bool operator>(const Date& other) const;
         bool operator>=(const Date& other) const;
-
-        /*
-        * Converts date to milliseconds since Unix epoch (UTC)
-        */
-        long long toMillisecondsSinceEpoch() const;
-
-        Date firstOfMonth() const;
-
-        // Get date X days ago
-        Date daysAgo(int days) const;
 
         // Getters
         int getYear() const;   // Get year value
@@ -90,6 +99,16 @@ export namespace datetime {
         int year;
         int month;
         int day;
+
+        /*
+         * Helper for day of week calculation (Sakamoto's algorithm)
+         * Returns 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+         */
+        static int getDayOfWeek(int y, int m, int d) {
+            static int t[] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
+            y -= m < 3;
+            return (y + y/4 - y/100 + y/400 + t[m-1] + d) % 7;
+        }
     };
 
 }; // namespace sim::datetime

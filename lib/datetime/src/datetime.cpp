@@ -348,4 +348,52 @@ namespace datetime {
         // Convert uint64_t to long long and delegate to the other overload
         return fromEpochTime(static_cast<long long>(epochTime), isNanoseconds);
     }
+
+    /*
+    * Returns true if this DateTime falls within US Daylight Saving Time.
+    * Logic: 2nd Sunday of March to 1st Sunday of November.
+    */
+    bool DateTime::isInsideUSDST() const {
+        if (month < 3 || month > 11) return false;
+        if (month > 3 && month < 11) return true;
+
+        // March: Starts 2nd Sunday
+        if (month == 3) {
+            int dowMar1 = Date::dayOfWeek(year, 3, 1);
+            // Days to first Sunday. If Sun(0), 0 days. If Mon(1), 6 days.
+            int daysToFirstSun = (7 - dowMar1) % 7;
+            int firstSun = 1 + daysToFirstSun;
+            int secondSun = firstSun + 7;
+            return day >= secondSun;
+        }
+
+        // November: Ends 1st Sunday
+        if (month == 11) {
+            int dowNov1 = Date::dayOfWeek(year, 11, 1);
+            int daysToFirstSun = (7 - dowNov1) % 7;
+            int firstSun = 1 + daysToFirstSun;
+            return day < firstSun;
+        }
+        return false;
+    }
+
+    // Helper to get time as decimal hours for trading window checks
+    double DateTime::timeAsDecimal() const {
+        // nanoseconds is nanos since start of day
+        return static_cast<double>(nanoseconds) / 3'600'000'000'000.0;
+    }
+
+    int DateTime::dayOfWeek() const {
+        return getDayOfWeek(year, month, day);
+    }
+
+    int DateTime::dayOfWeek(const int& y, int m, int d) {
+        return getDayOfWeek(y, m, d);
+    }
+
+    bool DateTime::isWeekend() const {
+        int dow = dayOfWeek();
+        return (dow == 0 || dow == 6);
+    }
+
 }; // namespace datetime

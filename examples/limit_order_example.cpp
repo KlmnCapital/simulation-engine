@@ -16,7 +16,7 @@ class LimitOrderExampleStrategy : public IStrategy<10> {
         // Place limit orders at specific price levels
         if (quotesProcessed_ == 0) {
             std::vector<Ticks> priceLevels = {
-                Ticks{263 * 10'000LL},  // $263.00
+                Ticks{261 * 10'000LL},  // $263.00
             };
 
             for (const Ticks& limitPrice : priceLevels) {
@@ -52,7 +52,7 @@ RunParams setRunParams() {
     RunParams params;
     params.symbols = {SymbolId{1}};                // Simulate symbol 1
     params.depth = Depth{10};                      // Use 10 price levels
-    params.startingCash = Ticks{1'000'000'};  // Start with $100
+    params.startingCash = Ticks{1000'000'000};  // Start with $1,000
     params.commissionPerShareMaker = Ticks{0};     // No maker fees for testing
     params.commissionPerShareTaker = Ticks{0};     // No taker fees for testing
     params.strategyName = "LimitOrderTest";
@@ -67,6 +67,10 @@ RunParams setRunParams() {
     params.sendLatencyNanoseconds = 5'000'000;     // 5 seconds
     params.receiveLatencyNanoseconds = 5'000'000;  // 5 seconds (total: 10 seconds)
     params.interestRate = Percentage{5};           // 5% annual interest rate
+
+    params.enforceTradingHours = true;
+    params.allowExtendedHoursTrading = true;
+    params.daylightSavings = true;
 
     return params;
 }

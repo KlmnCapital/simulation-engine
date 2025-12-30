@@ -65,10 +65,22 @@ export namespace sim {
             TimeStamp sendTs,
             const Quote<depth>& quote);
         void notifyFill(const Fill& fill, TimeStamp earliestNotificationTime);
-        void processPendingOrders();
+
+        // Order processing methods
+        void processPendingOrders(); // This method calls the following three helpers
+        void processPendingBuySellOrders();
+        void processPendingReplaceOrders();
+        void processPendingCancelOrders();
+
+
+        // Methods to nofify strategy class
         void processPendingNotifications(IStrategy<depth>& strategy);
         void processSettlements();
         bool isTimeForSettlement(TimeStamp currentTime) const;
+
+        // Methods to enforce market hours
+        bool canTrade(TimeStamp currentTime) const;
+        bool isInsideDST(TimeStamp currentTime) const;
 
         // Margin management
         void checkMarginRequirement();

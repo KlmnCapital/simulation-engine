@@ -40,6 +40,11 @@ export namespace sim {
         // Margin params
         std::uint8_t leverageFactor;
         Percentage interestRate;
+
+        // Trading hours
+        bool enforceTradingHours;
+        bool allowExtendedHoursTrading;
+        bool daylightSavings;
     };
 
 }  // namespace sim

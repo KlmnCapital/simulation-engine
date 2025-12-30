@@ -1,4 +1,4 @@
-// datetime_datetime.cppm
+// datetime_datetime.cppm export module datetime:datetime;
 export module datetime:datetime;
 
 import std;
@@ -56,7 +56,24 @@ export namespace datetime {
         // Converts this DateTime to milliseconds since Unix epoch (UTC)
         long long toMillisecondsSinceEpoch() const;
 
-        // Static methods
+        /*
+         * Returns true if this DateTime falls within US Daylight Saving Time.
+         * Logic: 2nd Sunday of March to 1st Sunday of November.
+         */
+        bool isInsideUSDST() const;
+
+        /*
+         * Returns the day of the week (0 = Sunday, 6 = Saturday)
+         */
+        int dayOfWeek() const;
+
+        bool isWeekend() const;
+
+        int dayOfWeek(const int& y, int m, int d);
+
+        // Helper to get time as decimal hours for trading window checks
+        double timeAsDecimal() const;
+
         /*
         * Get current date and time (UTC)
         */
@@ -68,12 +85,23 @@ export namespace datetime {
         */
         static string fromEpochTime(long long epochTime, bool isNanoseconds = false);
         static string fromEpochTime(std::uint64_t epochTime, bool isNanoseconds = false);
-
+ 
     private:
         int year;
         int month;
         int day;
         long long nanoseconds;
+
+        /*
+         * Helper for day of week calculation (Sakamoto's algorithm)
+         * Returns 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+         */
+        static int getDayOfWeek(int y, int m, int d) {
+            static int t[] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
+            y -= m < 3;
+            return (y + y/4 - y/100 + y/400 + t[m-1] + d) % 7;
+        }
+
     };
 }; // namespace datetime
 

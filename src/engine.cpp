@@ -5,6 +5,7 @@ module;
 module simulation_engine;
 
 import std;
+import datetime;
 
 namespace sim {
 
@@ -31,6 +32,50 @@ namespace sim {
         fillRateDistribution_ = std::normal_distribution<float>(params.fillRate, params.fillRateStdDev);
         partialFillProbabilityDistribution_ =
             std::uniform_int_distribution<int>(0, 99);  // 0-99 for percentage
+    }
+
+    template <std::size_t depth>
+    bool Engine<depth>::canTrade(TimeStamp currentTimeStamp) const {
+        if (!params_.enforceTradingHours) return true;
+
+        datetime::DateTime currentDateTime = datetime::DateTime::fromEpochTime(static_cast<std::uint64_t>(currentTimeStamp));
+
+        if (currentDateTime.isWeekend()) return false;
+
+        bool isDST = params_.daylightSavings && currentDateTime.isInsideUSDST();
+        double timeAsDecimal = currentDateTime.timeAsDecimal();
+
+        // Define UTC Windows
+        double regularStart = isDST ? 13.5 : 14.5; // 13:30 or 14:30 UTC
+        double regularEnd = isDST ? 20.0 : 21.0; // 20:00 or 21:00 UTC
+        double preStart = 9.0;                 // 09:00 UTC (Fixed)
+        // afterEnd is 0.0 (Midnight) or 1.0 (1 AM)
+        double afterEnd = isDST ? 0.0 : 1.0;
+
+        // Regular Trading Hours (RTH) Check
+        if (timeAsDecimal >= regularStart && timeAsDecimal < regularEnd) {
+            return true;
+        }
+
+        // Extended Hours Check (Only if permitted)
+        if (params_.allowExtendedHoursTrading) {
+            // Pre-market: From 09:00 UTC up to the start of RTH
+            if (timeAsDecimal >= preStart && timeAsDecimal < regularStart) {
+                return true;
+            }
+
+            // After-hours: From end of RTH up to afterEnd (Handles UTC midnight wrap)
+            if (isDST) {
+                // DST: 20:00 to 00:00 (Midnight)
+                if (timeAsDecimal >= 20.0 && timeAsDecimal < 24.0) return true;
+            } else {
+                // Non-DST: 21:00 to 01:00
+                if (timeAsDecimal >= 21.0 || timeAsDecimal < 1.0) return true;
+            }
+        }
+
+        // If we reach here, it's either overnight (no trade) or extended hours but flag is false
+        return false;
     }
 
     template <std::size_t depth>
@@ -398,7 +443,7 @@ namespace sim {
     }
 
     template <std::size_t depth>
-    void Engine<depth>::processPendingOrders() {
+    void Engine<depth>::processPendingCancelOrders() {
         // Process pending cancel orders first
         auto cancelIt = pendingCancels_.begin();
         while (cancelIt != pendingCancels_.end()) {
@@ -417,7 +462,10 @@ namespace sim {
                 ++cancelIt;
             }
         }
+    }
 
+    template <std::size_t depth>
+    void Engine<depth>::processPendingReplaceOrders() {
         // Process pending replace orders
         auto replaceIt = pendingReplaces_.begin();
         while (replaceIt != pendingReplaces_.end()) {
@@ -437,25 +485,41 @@ namespace sim {
                 ++replaceIt;
             }
         }
+    }
 
+    template <std::size_t depth>
+    void Engine<depth>::processPendingBuySellOrders() {
         // Process pending orders
-        auto it = pendingOrders_.begin();
-        while (it != pendingOrders_.end()) {
-            if (currentQuote_.timestamp >= it->earliestExecution) {
-                ExecutionResult result = tryExecute(it->order, it->sendTime, currentQuote_);
+        auto pendingIt = pendingOrders_.begin();
+        while (pendingIt != pendingOrders_.end()) {
+            if (currentQuote_.timestamp >= pendingIt->earliestExecution) {
 
+                // Only try to execute if we are within trading hours
+                if (!canTrade(currentQuote_.timestamp)) {
+                    ++pendingIt; 
+                    continue; // Order stays in pendingOrders_ for the next quote
+                }
+
+                ExecutionResult result = tryExecute(pendingIt->order, pendingIt->sendTime, currentQuote_);
                 if (result.isComplete) {
                     // Order is complete, remove from pending
-                    it = pendingOrders_.erase(it);
+                    pendingIt = pendingOrders_.erase(pendingIt);
                 } else {
                     // Order partially filled, update remaining quantity
-                    it->order = result.remainingOrder;
-                    ++it;
+                    pendingIt->order = result.remainingOrder;
+                    ++pendingIt;
                 }
             } else {
-                ++it;
+                ++pendingIt;
             }
         }
+    }
+
+    template <std::size_t depth>
+    void Engine<depth>::processPendingOrders() {
+        processPendingCancelOrders();
+        processPendingCancelOrders();
+        processPendingBuySellOrders();
     }
 
     template <std::size_t depth>
