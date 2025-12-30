@@ -16,9 +16,9 @@ class LimitOrderExampleStrategy : public IStrategy<10> {
         // Place limit orders at specific price levels (10, 20, 30, ..., 190)
         if (quotesProcessed_ == 0) {
             std::vector<Ticks> priceLevels = {
-                Ticks{125 * 1'000'000'000LL},  // $100.00
-                Ticks{124 * 1'000'000'000LL},  // $110.00
-                Ticks{120 * 1'000'000'000LL}   // $120.00
+                Ticks{263 * 1'000'000'000LL},  // $263.00
+                Ticks{264 * 1'000'000'000LL},  // $264.00
+                Ticks{265 * 1'000'000'000LL}   // $265.00
             };
 
             for (const Ticks& limitPrice : priceLevels) {
