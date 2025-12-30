@@ -70,7 +70,7 @@ RunParams setRunParams() {
 }
 
 int main() {
-    std::string inputParquetFile = "/mnt/klmncap3/tmp_simulation_data/AAPL_2025-10-24.parquet";
+    std::string inputParquetFile = "/mnt/klmncap3/tmp_simulation_data/ubigint_AAPL_2025-10-24.parquet";
 
     std::unordered_map<std::string, SymbolId> symbolIdMap;
     symbolIdMap["AAPL"] = sim::SymbolId{1};

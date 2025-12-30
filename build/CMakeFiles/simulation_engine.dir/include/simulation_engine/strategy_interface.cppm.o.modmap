@@ -1,7 +1,0 @@
-$root .
-simulation_engine:strategy_interface CMakeFiles/simulation_engine.dir/simulation_engine-strategy_interface.gcm
-simulation_engine:types CMakeFiles/simulation_engine.dir/simulation_engine-types.gcm
-simulation_engine:order_placement CMakeFiles/simulation_engine.dir/simulation_engine-order_placement.gcm
-simulation_engine:quote CMakeFiles/simulation_engine.dir/simulation_engine-quote.gcm
-std CMakeFiles/__CMAKE__CXX23@synth_17ca77cecb33.dir/7e51e9865fa1.bmi
-simulation_engine:portfolio CMakeFiles/simulation_engine.dir/simulation_engine-portfolio.gcm
