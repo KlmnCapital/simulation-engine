@@ -104,9 +104,14 @@ namespace sim {
         const std::int64_t num_rows = table->num_rows();
         this->quotes_.reserve(num_rows); 
 
-        // Pre-fetch Column Pointers for N levels
+        // Pre-fetch Column Pointers for 'depth' levels
         auto rtype_col = std::static_pointer_cast<arrow::Int8Array>(table->GetColumnByName("rtype")->chunk(0));
-        auto ts_col = std::static_pointer_cast<arrow::Int64Array>(table->GetColumnByName("ts_event")->chunk(0));
+        auto ts_raw_col = table->GetColumnByName("ts_event");
+        auto ts_col = std::static_pointer_cast<arrow::TimestampArray>(ts_raw_col->chunk(0));
+
+        // Determine if we need to scale Micros to Nanos
+        auto ts_type = std::static_pointer_cast<arrow::TimestampType>(ts_raw_col->type());
+        int64_t ts_multiplier = (ts_type->unit() == arrow::TimeUnit::MICRO) ? 1000 : 1;
 
         std::array<std::shared_ptr<arrow::Int64Array>, depth> bid_px_cols;
         std::array<std::shared_ptr<arrow::Int64Array>, depth> ask_px_cols;
@@ -143,7 +148,7 @@ namespace sim {
             }
 
             Quote<depth> quote;
-            quote.timestamp = TimeStamp{static_cast<std::uint64_t>(ts_col->Value(row))};
+            quote.timestamp = TimeStamp{static_cast<std::uint64_t>(ts_col->Value(row) * ts_multiplier)};
 
             // Compiler unrolls this loop because depth is known at compile time
             for (std::size_t level = 0; level < depth; ++level) {

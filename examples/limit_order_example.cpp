@@ -13,12 +13,10 @@ class LimitOrderExampleStrategy : public IStrategy<10> {
           startTime_(std::chrono::high_resolution_clock::now()) {}
 
     void onMarketData(const Quote<10>& q) override {
-        // Place limit orders at specific price levels (10, 20, 30, ..., 190)
+        // Place limit orders at specific price levels
         if (quotesProcessed_ == 0) {
             std::vector<Ticks> priceLevels = {
-                Ticks{263 * 1'000'000'000LL},  // $263.00
-                Ticks{264 * 1'000'000'000LL},  // $264.00
-                Ticks{265 * 1'000'000'000LL}   // $265.00
+                Ticks{263 * 10'000LL},  // $263.00
             };
 
             for (const Ticks& limitPrice : priceLevels) {
@@ -54,7 +52,7 @@ RunParams setRunParams() {
     RunParams params;
     params.symbols = {SymbolId{1}};                // Simulate symbol 1
     params.depth = Depth{10};                      // Use 10 price levels
-    params.startingCash = Ticks{100'000'000'000};  // Start with $100
+    params.startingCash = Ticks{1'000'000'};  // Start with $100
     params.commissionPerShareMaker = Ticks{0};     // No maker fees for testing
     params.commissionPerShareTaker = Ticks{0};     // No taker fees for testing
     params.strategyName = "LimitOrderTest";
