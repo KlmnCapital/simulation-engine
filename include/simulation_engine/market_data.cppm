@@ -41,42 +41,85 @@ export namespace sim {
 
     template <std::size_t depth>
     class IMarketData {
-    public:
-        IMarketData() = default;
+       public:
+        IMarketData(const std::string& marketDataFilePath, bool multipleFiles)
+            : marketDataFilePath_(marketDataFilePath),
+            marketDataFilePaths_{},
+            multipleFiles_(multipleFiles),
+            currentFileIndex(0) {}
+
+        IMarketData(const std::vector<std::string>& marketDataFilePaths, bool multipleFiles)
+            : marketDataFilePath_{},
+            marketDataFilePaths_(marketDataFilePaths), 
+            multipleFiles_(multipleFiles), 
+            currentFileIndex(0) {}
+
         virtual ~IMarketData() = default;
 
-        const Quote<depth>& currentQuote() const;
-        bool nextQuote();
-        bool goToQuote(TimeStamp targetTimestamp);
-        void reset();
-        std::size_t getNumQuotes() const;
-        std::size_t getCurrentIndex() const;
+        const Quote<depth>& currentQuote() const {
+            return currentQuote_;
+        }
 
-    protected:
+        bool nextQuote() {
+            // Use a while loop to skip empty files without using the stack
+            while (currentQuoteIndex_ >= quotes_.size()) {
+                if (!multipleFiles_ || (currentFileIndex + 1) >= marketDataFilePaths_.size()) {
+                    return false; 
+                }
+
+                currentFileIndex++;
+                loadQuotes(currentFileIndex);
+                currentQuoteIndex_ = 0;
+
+                // Loop continues if loadQuotes resulted in an empty quotes_ vector
+            }
+
+            currentQuote_ = quotes_[currentQuoteIndex_++];
+            return true;
+        }
+
+        std::size_t getCurrentIndex() const {
+            return currentQuoteIndex_;
+        }
+
+       protected:
+        bool loadQuotes(std::size_t fileIndex) {
+            return loadQuotes(marketDataFilePaths_[currentFileIndex]);
+        }
+
         virtual bool loadQuotes() = 0;
+        virtual bool loadQuotes(const std::string& marketDataFilePath) = 0;
+
+        const std::string marketDataFilePath_;
+        const std::vector<std::string> marketDataFilePaths_;
         std::vector<Quote<depth>> quotes_;
         std::size_t currentQuoteIndex_{0};
         Quote<depth> currentQuote_;
+        bool multipleFiles_;
+
+        std::size_t currentFileIndex;
     };
 
     template<std::size_t depth>
     class SingleSymbolMarketDataParquet : public IMarketData<depth> {
-    public:
-        SingleSymbolMarketDataParquet(const std::string& symbol,
-            const std::unordered_map<std::string, SymbolId>& symbolIdMap,
-            const std::string& startDate,
-            const std::string& endDate,
-            const std::string& parquetFilePath);
+       public:
+        SingleSymbolMarketDataParquet(
+            const std::string& marketDataFilePath,
+            const std::unordered_map<std::string, SymbolId>& symbolIdMap);
 
-    protected:
+        SingleSymbolMarketDataParquet(
+            const std::vector<std::string>& marketDataFilePaths,
+            const std::unordered_map<std::string, SymbolId>& symbolIdMap);
+
+       protected:
         bool loadQuotes() override;
-        bool loadQuotes(const std::string& parquetFilePath);
-
-    private:
-        const std::string& parquetFilePath_;
-        SymbolId symbol_;
-        datetime::Date startDate_;
-        datetime::Date endDate_;
+        bool loadQuotes(const std::string& marketDataFilePath) override;
     };
 
+// Explicit template instantiations for common depths
+template class IMarketData<1>;
+template class IMarketData<5>;
+template class IMarketData<10>;
+
 }  // namespace sim
+

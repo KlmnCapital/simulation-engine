@@ -52,7 +52,7 @@ RunParams setRunParams() {
     RunParams params;
     params.symbols = {SymbolId{1}};                // Simulate symbol 1
     params.depth = Depth{10};                      // Use 10 price levels
-    params.startingCash = Ticks{1000'000'000};  // Start with $1,000
+    params.startingCash = Ticks{1'000'000'000};  // Start with $1,000
     params.commissionPerShareMaker = Ticks{0};     // No maker fees for testing
     params.commissionPerShareTaker = Ticks{0};     // No taker fees for testing
     params.strategyName = "LimitOrderTest";
@@ -77,13 +77,15 @@ RunParams setRunParams() {
 
 int main() {
     // Define the path to the parquet file with the data.
-    std::string inputParquetFile = "/mnt/klmncap3/tmp_simulation_data/ubigint_AAPL_2025-10-24.parquet";
+    std::vector<std::string> filePaths;
+    filePaths.push_back("/mnt/klmncap3/tmp_simulation_data/ubigint_AAPL_2025-10-24.parquet");
+    filePaths.push_back("/mnt/klmncap3/tmp_simulation_data/ubigint_AAPL_2025-10-27.parquet");
 
     std::unordered_map<std::string, SymbolId> symbolIdMap;
     symbolIdMap["AAAPL"] = sim::SymbolId{1};
 
     // Create the market data class with the input file.
-    auto dataManager = std::make_unique<SingleSymbolMarketDataParquet<10>>("AAAPL", symbolIdMap, "2025-08-14", "2025-08-15", inputParquetFile);
+    auto dataManager = std::make_unique<SingleSymbolMarketDataParquet<10>>(filePaths, symbolIdMap);
 
     // Define the parameters for the simulation.
     RunParams params = setRunParams();

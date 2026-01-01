@@ -50,7 +50,7 @@ RunParams setRunParams() {
     RunParams params;
     params.symbols = {SymbolId{1}};              // Simulate symbol 1
     params.depth = Depth{10};                    // Use 10 price levels
-    params.startingCash = Ticks{10'000'000};  // Start with $1,000
+    params.startingCash = Ticks{1'000'000'000};  // Start with $1,000
     params.commissionPerShareMaker = Ticks{0};   // No maker fees for testing
     params.commissionPerShareTaker = Ticks{0};   // No taker fees for testing
     params.strategyName = "DataCompressionTest";
@@ -80,7 +80,7 @@ int main() {
     symbolIdMap["AAPL"] = sim::SymbolId{1};
 
     // Create the market data class with the input file.
-    auto dataManager = std::make_unique<SingleSymbolMarketDataParquet<10>>("AAPL", symbolIdMap, "2025-08-14", "2025-08-15", inputParquetFile);
+    auto dataManager = std::make_unique<SingleSymbolMarketDataParquet<10>>(inputParquetFile, symbolIdMap);
 
     RunParams params = setRunParams();
 

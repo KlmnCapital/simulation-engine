@@ -10,86 +10,47 @@ module simulation_engine;
 import std;
 
 namespace sim {
-    /*--------------------------------------*/
-    /*      IMarketDataSource methods       */
-    /*--------------------------------------*/
-    template <std::size_t depth>
-    const Quote<depth>& IMarketData<depth>::currentQuote() const {
-        return currentQuote_;
-    }
-
-    template <std::size_t depth>
-    bool IMarketData<depth>::nextQuote() {
-        if (currentQuoteIndex_ >= quotes_.size()) {
-                return false;
-        }
-        currentQuote_ = quotes_[++currentQuoteIndex_];
-        return true;
-    }
-
-    template <std::size_t depth>
-    bool IMarketData<depth>::goToQuote(TimeStamp targetTimestamp) {
-        // Find the first quote with timestamp >= targetTimestamp
-        auto foundQuote = std::lower_bound(quotes_.begin(), quotes_.end(), targetTimestamp,
-            [](const Quote<depth>& quote, TimeStamp timestamp) {
-                return quote.timestamp < timestamp;
-        });
-
-        // Check if we found an exact match
-        if (foundQuote != quotes_.end() && foundQuote->timestamp == targetTimestamp) {
-            currentQuoteIndex_ = std::distance(quotes_.begin(), foundQuote);
-            currentQuote_ = *foundQuote;
-            return true;
-        }
-
-        // Timestamp not found
-        return false;
-    }
-
-    template <std::size_t depth>
-    void IMarketData<depth>::reset() {
-        currentQuoteIndex_ = 0;
-        if (!quotes_.empty()) {
-            currentQuote_ = quotes_[currentQuoteIndex_];
-        }
-    }
-
-    template <std::size_t depth>
-    size_t IMarketData<depth>::getNumQuotes() const {
-        return quotes_.size(); 
-    }
-
-    template <std::size_t depth>
-    size_t IMarketData<depth>::getCurrentIndex() const {
-        return currentQuoteIndex_;
-    }
-
     /*---------------------------------------------------*/
     /*      SingleSymbolMarketDataParquet methods        */
     /*---------------------------------------------------*/
     template<std::size_t depth>
-    SingleSymbolMarketDataParquet<depth>::SingleSymbolMarketDataParquet(const std::string& symbol,
-        const std::unordered_map<std::string, SymbolId>& symbolIdMap,
-        const std::string& startDate,
-        const std::string& endDate,
-        const std::string& parquetFilePath)
-        : symbol_{symbolIdMap.at(symbol)},
-        endDate_{endDate},
-        startDate_{startDate},
-        parquetFilePath_{parquetFilePath} {
-        loadQuotes();
+    SingleSymbolMarketDataParquet<depth>::SingleSymbolMarketDataParquet(
+         const std::string& marketDataFilePath,
+         const std::unordered_map<std::string, SymbolId>& symbolIdMap)
+        : IMarketData<depth>(marketDataFilePath, false){
+        loadQuotes(marketDataFilePath);
+    }
+
+    template<std::size_t depth>
+    SingleSymbolMarketDataParquet<depth>::SingleSymbolMarketDataParquet(
+         const std::vector<std::string>& marketDataFilePaths,
+         const std::unordered_map<std::string, SymbolId>& symbolIdMap)
+        : IMarketData<depth>(marketDataFilePaths, true) {
+        loadQuotes(marketDataFilePaths[0]);
+    }
+
+    template<std::size_t depth>
+    bool SingleSymbolMarketDataParquet<depth>::loadQuotes() {
+        if (!this->multipleFiles_) {
+            loadQuotes(this->marketDataFilePath_);
+            return true;
+        }
+
+        if (this->currentFileIndex >= this->marketDataFilePaths_.size()) {
+            return false;
+        }
+       loadQuotes(this->marketDataFilePaths_[this->currentFileIndex]);
+        return true;
     }
 
     template <std::size_t depth>
-    bool SingleSymbolMarketDataParquet<depth>::loadQuotes() { return loadQuotes(parquetFilePath_); }
-
-    template <std::size_t depth>
-    bool SingleSymbolMarketDataParquet<depth>::loadQuotes(const std::string& parquetFilePath) {
+    bool SingleSymbolMarketDataParquet<depth>::loadQuotes(const std::string& marketDataFilePath) {
+        this->quotes_.clear();
         arrow::MemoryPool* pool = arrow::default_memory_pool();
 
         // Open File
         std::shared_ptr<arrow::io::ReadableFile> input;
-        auto open_res = arrow::io::ReadableFile::Open(parquetFilePath);
+        auto open_res = arrow::io::ReadableFile::Open(marketDataFilePath);
         if (!open_res.ok()) return false;
         input = open_res.ValueOrDie();
 
@@ -101,7 +62,13 @@ namespace sim {
         std::shared_ptr<arrow::Table> table;
         if (!arrow_reader->ReadTable(&table).ok()) return false;
 
+        // Ensure all chunks are merged so chunk(0) contains all rows
+        auto combine_res = table->CombineChunks();
+        if (!combine_res.ok()) return false;
+        table = combine_res.ValueOrDie();
+
         const std::int64_t num_rows = table->num_rows();
+        if (num_rows == 0) return true;
         this->quotes_.reserve(num_rows); 
 
         // Pre-fetch Column Pointers for 'depth' levels
@@ -120,7 +87,7 @@ namespace sim {
 
         for (std::size_t level = 0; level < depth; ++level) {
             // Formats index as 00, 01, 02... to match Databento Parquet naming
-            std::string levelIndex = (level < depth) ? "0" + std::to_string(level) : std::to_string(level);
+            std::string levelIndex = (level < 10) ? "0" + std::to_string(level) : std::to_string(level);
 
             bid_px_cols[level] = std::static_pointer_cast<arrow::Int64Array>(table->GetColumnByName("bid_px_" + levelIndex)->chunk(0));
             ask_px_cols[level] = std::static_pointer_cast<arrow::Int64Array>(table->GetColumnByName("ask_px_" + levelIndex)->chunk(0));
@@ -152,10 +119,10 @@ namespace sim {
 
             // Compiler unrolls this loop because depth is known at compile time
             for (std::size_t level = 0; level < depth; ++level) {
-                quote.columns[level]           = Ticks{bid_px_cols[level]->Value(row)};
-                quote.columns[depth + level]       = Ticks{ask_px_cols[level]->Value(row)};
-                quote.columns[2 * depth + level]   = Ticks{static_cast<std::int64_t>(bid_sz_cols[level]->Value(row))};
-                quote.columns[3 * depth + level]   = Ticks{static_cast<std::int64_t>(ask_sz_cols[level]->Value(row))};
+                quote.columns[level] = Ticks{bid_px_cols[level]->Value(row)};
+                quote.columns[depth + level] = Ticks{ask_px_cols[level]->Value(row)};
+                quote.columns[2 * depth + level] = Ticks{static_cast<std::int64_t>(bid_sz_cols[level]->Value(row))};
+                quote.columns[3 * depth + level] = Ticks{static_cast<std::int64_t>(ask_sz_cols[level]->Value(row))};
             }
 
             this->quotes_.push_back(std::move(quote));
@@ -165,10 +132,6 @@ namespace sim {
     }
 
     // Explicit template instantiations for common depths
-    template class IMarketData<1>;
-    template class IMarketData<5>;
-    template class IMarketData<10>;
-
     template class SingleSymbolMarketDataParquet<1>;
     template class SingleSymbolMarketDataParquet<5>;
     template class SingleSymbolMarketDataParquet<10>;
