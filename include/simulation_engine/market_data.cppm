@@ -1,5 +1,5 @@
 // market_data.cppm
-export module simulation_engine:market_data;
+export module simulation_engine:market_data_multi_symbol;
 
 import :quote;
 import :types;
@@ -9,38 +9,8 @@ import datetime;
 import std;
 
 export namespace sim {
-
-    enum class Source : std::uint8_t {
-        DATABENTO = 0,
-        CHARLES_SCHWAB = 1 
-    };
-
-    enum class Service : std::uint8_t { NYSE_BOOK = 0, NASDAQ_BOOK = 1 };
-
-    constexpr const char* toString(Source source) {
-        switch (source) {
-            case Source::DATABENTO:
-                return "dbn";
-            case Source::CHARLES_SCHWAB:
-                return "schwab";
-            default:
-                return "unknown";
-        }
-    }
-
-    constexpr const char* toString(Service service) {
-        switch (service) {
-            case Service::NYSE_BOOK:
-                return "NYSE_BOOK";
-            case Service::NASDAQ_BOOK:
-                return "NASDAQ_BOOK";
-            default:
-                return "unknown";
-        }
-    }
-
-    template <std::size_t depth>
-    class IMarketData {
+    template <std::size_t depth, std::size_t numberOfSymbols>
+    class IMarketDataMultiSymbol {
        public:
         IMarketData(const std::string& marketDataFilePath, bool multipleFiles)
             : marketDataFilePath_(marketDataFilePath),
@@ -56,11 +26,11 @@ export namespace sim {
 
         virtual ~IMarketData() = default;
 
-        const Quote<depth>& currentQuote() const {
-            return currentQuote_;
+        const Quote<depth>& currentMarketState() const {
+            return marketState_;
         }
 
-        bool nextQuote() {
+        bool nextMarketState() {
             // Use a while loop to skip empty files without using the stack
             while (currentQuoteIndex_ >= quotes_.size()) {
                 if (!multipleFiles_ || (currentFileIndex + 1) >= marketDataFilePaths_.size()) {
@@ -74,7 +44,8 @@ export namespace sim {
                 // Loop continues if loadQuotes resulted in an empty quotes_ vector
             }
 
-            currentQuote_ = quotes_[currentQuoteIndex_++];
+            std::size_t SymbolId symbolWithNextUpdate = std::static_cast<std::size_t>(quotes_[currentQuoteIndex_++]);
+            marketState_[symbolId] = quotes_[currentQuoteIndex_];
             return true;
         }
 
@@ -83,22 +54,23 @@ export namespace sim {
         }
 
        protected:
-        bool loadQuotes(std::size_t fileIndex) {
-            return loadQuotes(marketDataFilePaths_[currentFileIndex]);
+        bool loadData(std::size_t fileIndex) {
+            return loadData(marketDataFilePaths_[currentFileIndex]);
         }
 
-        virtual bool loadQuotes() = 0;
-        virtual bool loadQuotes(const std::string& marketDataFilePath) = 0;
+        virtual bool loadData() = 0;
+        virtual bool loadData(const std::string& marketDataFilePath) = 0;
 
         const std::string marketDataFilePath_;
         const std::vector<std::string> marketDataFilePaths_;
         std::vector<Quote<depth>> quotes_;
         std::size_t currentQuoteIndex_{0};
-        Quote<depth> currentQuote_;
+        MarketState<depth, numberOfSymbols> marketState_;
         bool multipleFiles_;
 
         std::size_t currentFileIndex;
     };
+
 
     template<std::size_t depth>
     class SingleSymbolMarketDataParquet : public IMarketData<depth> {
@@ -112,8 +84,8 @@ export namespace sim {
             const std::unordered_map<std::string, SymbolId>& symbolIdMap);
 
        protected:
-        bool loadQuotes() override;
-        bool loadQuotes(const std::string& marketDataFilePath) override;
+        bool loadData() override;
+        bool loadData(const std::string& marketDataFilePath) override;
     };
 
 // Explicit template instantiations for common depths
