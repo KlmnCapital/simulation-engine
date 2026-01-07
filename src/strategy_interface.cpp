@@ -6,6 +6,7 @@ namespace sim {
     void IStrategy<depth>::setEngine(Engine<depth>* engine) {
         engine_ = engine;
     }
+
     template <std::size_t depth>
     void IStrategy<depth>::onFill(const Fill& fill) {
         // Update local portfolio with fill (strategy sees fills with delay)

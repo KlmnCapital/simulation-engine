@@ -239,7 +239,6 @@ export namespace sim {
     /*      Tags & type definitions       */
     /*------------------------------------*/
     struct OrderIdTag {};
-    struct SymbolIdTag {};
     struct VenueIdTag {};
     struct QuantityTag {};
     struct PriceTag {};
@@ -249,7 +248,6 @@ export namespace sim {
     struct TicksTag {};
 
     using OrderId = Strong<std::uint64_t, OrderIdTag>;
-    using SymbolId = Strong<std::uint16_t, SymbolIdTag>;
     using VenueId = Strong<std::uint8_t, VenueIdTag>;
     using Quantity = Strong<std::uint32_t, QuantityTag>;  // Number of shares to buy/sell
     using Price = Strong<std::uint64_t, PriceTag>;        // Price in ticks (dollars * 1e9)
@@ -266,7 +264,6 @@ export namespace sim {
     /*      Sentinels (reserved "invalid" values)       */
     /*--------------------------------------------------*/
     inline constexpr OrderId InvalidOrderId{std::numeric_limits<std::uint64_t>::max()};
-    inline constexpr SymbolId InvalidSymbolId{std::numeric_limits<std::uint16_t>::max()};
     inline constexpr VenueId InvalidVenueId{std::numeric_limits<std::uint8_t>::max()};
     inline constexpr Quantity InvalidQuantity{std::numeric_limits<std::uint32_t>::max()};
     inline constexpr Price InvalidPrice{std::numeric_limits<std::uint64_t>::max()};
@@ -279,7 +276,6 @@ export namespace sim {
     /*      Validation helpers   */
     /*---------------------------*/
     [[nodiscard]] inline constexpr bool is_valid(OrderId x) { return x != InvalidOrderId; }
-    [[nodiscard]] inline constexpr bool is_valid(SymbolId x) { return x != InvalidSymbolId; }
     [[nodiscard]] inline constexpr bool is_valid(VenueId x) { return x != InvalidVenueId; }
     [[nodiscard]] inline constexpr bool is_valid(Quantity x) { return x != InvalidQuantity; }
     [[nodiscard]] inline constexpr bool is_valid(Price x) { return x != InvalidPrice; }

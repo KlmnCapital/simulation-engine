@@ -29,17 +29,17 @@ export namespace sim {
     * - onFill: Called when orders are executed
     * - onEnd: Called at the end of simulation
     */
-    template <std::size_t depth>
+    template <std::size_t depth, std::uint64_t numberOfSymbols>
     class IStrategy {
     public:
         IStrategy(Portfolio portfolio) : portfolio_(portfolio) {}
         virtual ~IStrategy() = default;
 
         virtual void onStart() {}
-        virtual void onMarketData(const Quote<depth>&) {}
+        virtual void onMarketData(const MarketState<depth, numberOfSymbols>&) {}
         virtual void onEnd() {}
 
-        void setEngine(Engine<depth>* engine);
+        void setEngine(Engine<depth, numberOfSymbols>* engine);
         void onFill(const Fill& fill);
 
         // Order placement helper methods
@@ -66,13 +66,6 @@ export namespace sim {
         Portfolio portfolio_;
 
         // Track orders for fund management
-        struct PendingOrder {
-            OrderId id;
-            OrderInstruction instruction;
-            Quantity quantity;
-            Ticks price;
-            Ticks value;
-        };
         std::vector<PendingOrder> pendingOrders_;
     };
 

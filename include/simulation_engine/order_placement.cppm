@@ -17,7 +17,7 @@ export namespace sim {
     */
     struct NewOrder {
         OrderId id{0};
-        SymbolId symbol{0};
+        std::uint16_t symbol{0};
         TimeInForce timeInForce{TimeInForce::Day};
         OrderInstruction instruction{OrderInstruction::Buy};
         OrderType orderType{OrderType::Limit};
@@ -38,7 +38,7 @@ export namespace sim {
     */
     struct Fill {
         OrderId id{0};       // Order ID that generated this fill
-        SymbolId symbol{0};  // Symbol that was traded
+        std::uint16_t symbol{0};  // Symbol that was traded
 
         Quantity quantity{0};    // Quantity executed in this fill
         Ticks price{0};          // Execution price in ticks

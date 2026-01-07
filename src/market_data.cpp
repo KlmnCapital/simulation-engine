@@ -16,7 +16,7 @@ namespace sim {
     template<std::size_t depth>
     SingleSymbolMarketDataParquet<depth>::SingleSymbolMarketDataParquet(
          const std::string& marketDataFilePath,
-         const std::unordered_map<std::string, SymbolId>& symbolIdMap)
+         const std::unordered_map<std::string, std::uint64_t>& symbolIdMap)
         : IMarketData<depth>(marketDataFilePath, false){
         loadQuotes(marketDataFilePath);
     }
@@ -24,7 +24,7 @@ namespace sim {
     template<std::size_t depth>
     SingleSymbolMarketDataParquet<depth>::SingleSymbolMarketDataParquet(
          const std::vector<std::string>& marketDataFilePaths,
-         const std::unordered_map<std::string, SymbolId>& symbolIdMap)
+         const std::unordered_map<std::string, std::uint64_t>& symbolIdMap)
         : IMarketData<depth>(marketDataFilePaths, true) {
         loadQuotes(marketDataFilePaths[0]);
     }
@@ -50,79 +50,75 @@ namespace sim {
 
         // Open File
         std::shared_ptr<arrow::io::ReadableFile> input;
-        auto open_res = arrow::io::ReadableFile::Open(marketDataFilePath);
-        if (!open_res.ok()) return false;
-        input = open_res.ValueOrDie();
+        auto openResult = arrow::io::ReadableFile::Open(marketDataFilePath);
+        if (!openResult.ok()) return false;
+        input = openResult.ValueOrDie();
 
-        auto reader_result = parquet::arrow::OpenFile(input, pool);
-        if (!reader_result.ok()) return false;
-        std::unique_ptr<parquet::arrow::FileReader> arrow_reader = std::move(reader_result).ValueOrDie();
+        auto readerResult = parquet::arrow::OpenFile(input, pool);
+        if (!readerResult.ok()) return false;
+        std::unique_ptr<parquet::arrow::FileReader> arrowReader = std::move(readerResult).ValueOrDie();
 
         // Read the Table 
         std::shared_ptr<arrow::Table> table;
-        if (!arrow_reader->ReadTable(&table).ok()) return false;
+        if (!arrowReader->ReadTable(&table).ok()) return false;
 
-        // Ensure all chunks are merged so chunk(0) contains all rows
-        auto combine_res = table->CombineChunks();
-        if (!combine_res.ok()) return false;
-        table = combine_res.ValueOrDie();
+        // Ensure all chunks are merged
+        auto combineResult = table->CombineChunks();
+        if (!combineResult.ok()) return false;
+        table = combineResult.ValueOrDie();
 
-        const std::int64_t num_rows = table->num_rows();
-        if (num_rows == 0) return true;
-        this->quotes_.reserve(num_rows); 
+        const std::int64_t numRows = table->num_rows();
+        if (numRows == 0) return true;
+        this->quotes_.reserve(numRows); 
 
-        // Pre-fetch Column Pointers for 'depth' levels
-        auto rtype_col = std::static_pointer_cast<arrow::Int8Array>(table->GetColumnByName("rtype")->chunk(0));
-        auto ts_raw_col = table->GetColumnByName("ts_event");
-        auto ts_col = std::static_pointer_cast<arrow::TimestampArray>(ts_raw_col->chunk(0));
+        // Fetch Column Pointers
+        auto rowType = std::static_pointer_cast<arrow::Int8Array>(table->GetColumnByName("rtype")->chunk(0));
 
-        // Determine if we need to scale Micros to Nanos
-        auto ts_type = std::static_pointer_cast<arrow::TimestampType>(ts_raw_col->type());
-        int64_t ts_multiplier = (ts_type->unit() == arrow::TimeUnit::MICRO) ? 1000 : 1;
+        auto symbolIdColumn = std::static_pointer_cast<arrow::UInt16Array>(table->GetColumnByName("symbol_id")->chunk(0));
 
-        std::array<std::shared_ptr<arrow::Int64Array>, depth> bid_px_cols;
-        std::array<std::shared_ptr<arrow::Int64Array>, depth> ask_px_cols;
-        std::array<std::shared_ptr<arrow::UInt32Array>, depth> bid_sz_cols;
-        std::array<std::shared_ptr<arrow::UInt32Array>, depth> ask_sz_cols;
+        auto rawTimestampColumn = table->GetColumnByName("ts_event");
+        auto timestampColumn = std::static_pointer_cast<arrow::TimestampArray>(rawTimestampColumn->chunk(0));
+
+        // Determine scaling for timestamps
+        auto timestampType = std::static_pointer_cast<arrow::TimestampType>(rawTimestampColumn->type());
+        int64_t timestampMultiplier = (timestampType->unit() == arrow::TimeUnit::MICRO) ? 1000 : 1;
+
+        // Pre-fetch Level-based Column Pointers
+        std::array<std::shared_ptr<arrow::Int64Array>, depth> bidPriceColumn;
+        std::array<std::shared_ptr<arrow::Int64Array>, depth> askPriceColumn;
+        std::array<std::shared_ptr<arrow::UInt32Array>, depth> bidSizeColumn;
+        std::array<std::shared_ptr<arrow::UInt32Array>, depth> askSizeColumn;
 
         for (std::size_t level = 0; level < depth; ++level) {
-            // Formats index as 00, 01, 02... to match Databento Parquet naming
             std::string levelIndex = (level < 10) ? "0" + std::to_string(level) : std::to_string(level);
 
-            bid_px_cols[level] = std::static_pointer_cast<arrow::Int64Array>(table->GetColumnByName("bid_px_" + levelIndex)->chunk(0));
-            ask_px_cols[level] = std::static_pointer_cast<arrow::Int64Array>(table->GetColumnByName("ask_px_" + levelIndex)->chunk(0));
-            bid_sz_cols[level] = std::static_pointer_cast<arrow::UInt32Array>(table->GetColumnByName("bid_sz_" + levelIndex)->chunk(0));
-            ask_sz_cols[level] = std::static_pointer_cast<arrow::UInt32Array>(table->GetColumnByName("ask_sz_" + levelIndex)->chunk(0));
+            bidPriceColumn[level] = std::static_pointer_cast<arrow::Int64Array>(table->GetColumnByName("bid_px_" + levelIndex)->chunk(0));
+            askPriceColumn[level] = std::static_pointer_cast<arrow::Int64Array>(table->GetColumnByName("ask_px_" + levelIndex)->chunk(0));
+            bidSizeColumn[level] = std::static_pointer_cast<arrow::UInt32Array>(table->GetColumnByName("bid_sz_" + levelIndex)->chunk(0));
+            askSizeColumn[level] = std::static_pointer_cast<arrow::UInt32Array>(table->GetColumnByName("ask_sz_" + levelIndex)->chunk(0));
         }
 
-        std::size_t totalRecords = 0;
-        std::size_t crossedQuotes = 0;
-
         // Main Processing Loop
-        for (std::int64_t row = 0; row < num_rows; ++row) {
-            // Check that there are *depth* levels
-            if (rtype_col->Value(row) != depth) continue;
+        for (std::int64_t row = 0; row < numRows; ++row) {
+            if (rowType->Value(row) != depth) continue;
 
-            totalRecords++;
+            std::int64_t levelOneBid = bidPriceColumn[0]->Value(row);
+            std::int64_t levelOneAsk = askPriceColumn[0]->Value(row);
 
-            // Use Top-of-Book for validation
-            std::int64_t level1_bid = bid_px_cols[0]->Value(row);
-            std::int64_t level1_ask = ask_px_cols[0]->Value(row);
-
-            if (level1_bid >= level1_ask || level1_bid <= 0) {
-                crossedQuotes++;
+            if (levelOneBid >= levelOneAsk || levelOneBid <= 0) {
                 continue;
             }
 
             Quote<depth> quote;
-            quote.timestamp = TimeStamp{static_cast<std::uint64_t>(ts_col->Value(row) * ts_multiplier)};
 
-            // Compiler unrolls this loop because depth is known at compile time
+            quote.symbolId = SymbolId{symbolIdColumn->Value(row)};
+            quote.timestamp = TimeStamp{static_cast<std::uint64_t>(timestampColumn->Value(row) * timestampMultiplier)};
+
             for (std::size_t level = 0; level < depth; ++level) {
-                quote.columns[level] = Ticks{bid_px_cols[level]->Value(row)};
-                quote.columns[depth + level] = Ticks{ask_px_cols[level]->Value(row)};
-                quote.columns[2 * depth + level] = Ticks{static_cast<std::int64_t>(bid_sz_cols[level]->Value(row))};
-                quote.columns[3 * depth + level] = Ticks{static_cast<std::int64_t>(ask_sz_cols[level]->Value(row))};
+                quote.columns[level] = Ticks{bidPriceColumn[level]->Value(row)};
+                quote.columns[depth + level] = Ticks{askPriceColumn[level]->Value(row)};
+                quote.columns[2 * depth + level] = Ticks{static_cast<std::int64_t>(bidSizeColumn[level]->Value(row))};
+                quote.columns[3 * depth + level] = Ticks{static_cast<std::int64_t>(askSizeColumn[level]->Value(row))};
             }
 
             this->quotes_.push_back(std::move(quote));

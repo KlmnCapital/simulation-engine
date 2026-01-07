@@ -9,84 +9,129 @@ import datetime;
 import std;
 
 export namespace sim {
-    template <std::size_t depth, std::size_t numberOfSymbols>
-    class IMarketDataMultiSymbol {
-       public:
-        IMarketData(const std::string& marketDataFilePath, bool multipleFiles)
-            : marketDataFilePath_(marketDataFilePath),
-            marketDataFilePaths_{},
-            multipleFiles_(multipleFiles),
-            currentFileIndex(0) {}
 
-        IMarketData(const std::vector<std::string>& marketDataFilePaths, bool multipleFiles)
-            : marketDataFilePath_{},
-            marketDataFilePaths_(marketDataFilePaths), 
-            multipleFiles_(multipleFiles), 
-            currentFileIndex(0) {}
+template <std::size_t depth, std::size_t numberOfSymbols>
+class IMarketDataMultiSymbol {
+    public:
+    IMarketData(const std::string& marketDataFilePath, bool multipleFiles)
+        : marketDataFilePath_(marketDataFilePath),
+        marketDataFilePaths_{},
+        multipleFiles_(multipleFiles),
+        currentFileIndex(0) {}
 
-        virtual ~IMarketData() = default;
+    IMarketData(const std::vector<std::string>& marketDataFilePaths, bool multipleFiles)
+        : marketDataFilePath_{},
+        marketDataFilePaths_(marketDataFilePaths), 
+        multipleFiles_(multipleFiles), 
+        currentFileIndex(0) {}
 
-        const Quote<depth>& currentMarketState() const {
-            return marketState_;
-        }
+    virtual ~IMarketData() = default;
 
-        bool nextMarketState() {
-            // Use a while loop to skip empty files without using the stack
-            while (currentQuoteIndex_ >= quotes_.size()) {
-                if (!multipleFiles_ || (currentFileIndex + 1) >= marketDataFilePaths_.size()) {
-                    return false; 
-                }
+    const Quote<depth>& currentMarketState() const {
+        return marketState_;
+    }
 
-                currentFileIndex++;
-                loadQuotes(currentFileIndex);
-                currentQuoteIndex_ = 0;
-
-                // Loop continues if loadQuotes resulted in an empty quotes_ vector
+    bool nextMarketState() {
+        // Use a while loop to skip empty files without using the stack
+        while (currentQuoteIndex_ >= quotes_.size()) {
+            if (!multipleFiles_ || (currentFileIndex + 1) >= marketDataFilePaths_.size()) {
+                return false; 
             }
 
-            std::size_t SymbolId symbolWithNextUpdate = std::static_cast<std::size_t>(quotes_[currentQuoteIndex_++]);
-            marketState_[symbolId] = quotes_[currentQuoteIndex_];
-            return true;
+            currentFileIndex++;
+            loadQuotes(currentFileIndex);
+            currentQuoteIndex_ = 0;
+
+            // Loop continues if loadQuotes resulted in an empty quotes_ vector
         }
 
-        std::size_t getCurrentIndex() const {
-            return currentQuoteIndex_;
-        }
+        std::uint16_t symbolWithNextUpdate = quotes_[currentQuoteIndex_++].symbolId;
+        marketState_[symbolId] = quotes_[currentQuoteIndex_];
+        return true;
+    }
 
-       protected:
-        bool loadData(std::size_t fileIndex) {
-            return loadData(marketDataFilePaths_[currentFileIndex]);
-        }
+    std::size_t getCurrentIndex() const {
+        return currentQuoteIndex_;
+    }
 
-        virtual bool loadData() = 0;
-        virtual bool loadData(const std::string& marketDataFilePath) = 0;
+    const std::vector<Ticks, numberOfSymbols>& bestBids() {
+        return marketState_.bestBids();
+    }
 
-        const std::string marketDataFilePath_;
-        const std::vector<std::string> marketDataFilePaths_;
-        std::vector<Quote<depth>> quotes_;
-        std::size_t currentQuoteIndex_{0};
-        MarketState<depth, numberOfSymbols> marketState_;
-        bool multipleFiles_;
+    const std::vector<Ticks, numberOfSymbols>& bestAsks() {
+        return marketState_.bestAsks();
+    }
 
-        std::size_t currentFileIndex;
-    };
+    const std::vector<Ticks, numberOfSymbols>& bestBids(std::uint16_t symbolId) {
+        return marketState_.getBids(symbolId);
+    }
+
+    const std::vector<Ticks, numberOfSymbols>& getAsks(std::uint16_t symbolId) {
+        return marketState_.getAsks(symbolId);
+    }
+
+    Ticks getAsk(std:uint16_t symbolId, std::size_t level) {
+        return marketState_.getAsk(level, symbolId);
+    }
+
+    Ticks getBid(std:uint16_t symbolId, std::size_t level) {
+        return marketState_.getBid(level, symbolId);
+    }
+
+    const std::vector<Ticks, numberOfSymbols>& bestBidSizes(std::uint16_t symbolId) {
+        return marketState_.getBidSizes(symbolId);
+    }
+
+    const std::vector<Ticks, numberOfSymbols>& getAskSizes(std::uint16_t symbolId) {
+        return marketState_.getAskSizes(symbolId);
+    }
+
+    Ticks getAskSize(std:uint16_t symbolId, std::size_t level) {
+        return marketState_.getAskSize(level, symbolId);
+    }
+
+    Ticks getBidSize(std:uint16_t symbolId, std::size_t level) {
+        return marketState_.getBidSize(level, symbolId);
+    }
+
+    TimeStamp currentTimeStamp() {
+        return marketState_.timestamp;
+    }
+
+   protected:
+    bool loadData(std::size_t fileIndex) {
+        return loadData(marketDataFilePaths_[currentFileIndex]);
+    }
+
+    virtual bool loadData() = 0;
+    virtual bool loadData(const std::string& marketDataFilePath) = 0;
+
+    const std::string marketDataFilePath_;
+    const std::vector<std::string> marketDataFilePaths_;
+    std::vector<Quote<depth>> quotes_;
+    std::size_t currentQuoteIndex_{0};
+    MarketState<depth, numberOfSymbols> marketState_;
+    bool multipleFiles_;
+
+    std::size_t currentFileIndex;
+};
 
 
-    template<std::size_t depth>
-    class SingleSymbolMarketDataParquet : public IMarketData<depth> {
-       public:
-        SingleSymbolMarketDataParquet(
-            const std::string& marketDataFilePath,
-            const std::unordered_map<std::string, SymbolId>& symbolIdMap);
+template<std::size_t depth>
+class SingleSymbolMarketDataParquet : public IMarketData<depth> {
+    public:
+    SingleSymbolMarketDataParquet(
+        const std::string& marketDataFilePath,
+        const std::unordered_map<std::string, std::uint16_t>& symbolIdMap);
 
-        SingleSymbolMarketDataParquet(
-            const std::vector<std::string>& marketDataFilePaths,
-            const std::unordered_map<std::string, SymbolId>& symbolIdMap);
+    SingleSymbolMarketDataParquet(
+        const std::vector<std::string>& marketDataFilePaths,
+        const std::unordered_map<std::string, std::uint16_t>& symbolIdMap);
 
-       protected:
-        bool loadData() override;
-        bool loadData(const std::string& marketDataFilePath) override;
-    };
+    protected:
+    bool loadData() override;
+    bool loadData(const std::string& marketDataFilePath) override;
+};
 
 // Explicit template instantiations for common depths
 template class IMarketData<1>;
