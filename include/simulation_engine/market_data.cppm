@@ -1,8 +1,9 @@
 // market_data.cppm
-export module simulation_engine:market_data_multi_symbol;
+export module simulation_engine:market_data;
 
 import :quote;
 import :types;
+import :market_state;
 
 import datetime;
 
@@ -11,7 +12,7 @@ import std;
 export namespace sim {
 
 template <std::size_t depth, std::size_t numberOfSymbols>
-class IMarketDataMultiSymbol {
+class IMarketData {
     public:
     IMarketData(const std::string& marketDataFilePath, bool multipleFiles)
         : marketDataFilePath_(marketDataFilePath),
@@ -27,7 +28,7 @@ class IMarketDataMultiSymbol {
 
     virtual ~IMarketData() = default;
 
-    const Quote<depth>& currentMarketState() const {
+    const MarketState<depth, numberOfSymbols>& currentMarketState() const {
         return marketState_;
     }
 
@@ -39,58 +40,62 @@ class IMarketDataMultiSymbol {
             }
 
             currentFileIndex++;
-            loadQuotes(currentFileIndex);
+            loadData(currentFileIndex);
             currentQuoteIndex_ = 0;
 
             // Loop continues if loadQuotes resulted in an empty quotes_ vector
         }
 
         std::uint16_t symbolWithNextUpdate = quotes_[currentQuoteIndex_++].symbolId;
-        marketState_[symbolId] = quotes_[currentQuoteIndex_];
+        marketState_[symbolWithNextUpdate] = quotes_[currentQuoteIndex_];
         return true;
+    }
+
+    const Quote<depth>& getQuote(std::uint16_t symbol) {
+        return marketState_.getQuote(symbol);
     }
 
     std::size_t getCurrentIndex() const {
         return currentQuoteIndex_;
     }
 
-    const std::vector<Ticks, numberOfSymbols>& bestBids() {
-        return marketState_.bestBids();
+    const std::array<Ticks, numberOfSymbols> bestBids() {
+        return marketState_.getBestBids();
     }
 
-    const std::vector<Ticks, numberOfSymbols>& bestAsks() {
-        return marketState_.bestAsks();
+    const std::array<Ticks, numberOfSymbols> bestAsks() {
+        return marketState_.getBestAsks();
     }
 
-    const std::vector<Ticks, numberOfSymbols>& bestBids(std::uint16_t symbolId) {
-        return marketState_.getBids(symbolId);
+    Ticks bestBid(std::uint16_t symbolId) {
+        return marketState_.bestBid(symbolId);
     }
 
-    const std::vector<Ticks, numberOfSymbols>& getAsks(std::uint16_t symbolId) {
-        return marketState_.getAsks(symbolId);
+    Ticks bestAsk(std::uint16_t symbolId) {
+        return marketState_.bestAsk(symbolId);
     }
 
-    Ticks getAsk(std:uint16_t symbolId, std::size_t level) {
+    Ticks getAsk(std::uint16_t symbolId, std::size_t level) {
         return marketState_.getAsk(level, symbolId);
     }
 
-    Ticks getBid(std:uint16_t symbolId, std::size_t level) {
+    Ticks getBid(std::uint16_t symbolId, std::size_t level) {
         return marketState_.getBid(level, symbolId);
     }
 
-    const std::vector<Ticks, numberOfSymbols>& bestBidSizes(std::uint16_t symbolId) {
+    const std::array<Ticks, depth> bestBidSizes(std::uint16_t symbolId) {
         return marketState_.getBidSizes(symbolId);
     }
 
-    const std::vector<Ticks, numberOfSymbols>& getAskSizes(std::uint16_t symbolId) {
+    const std::array<Ticks, depth> getAskSizes(std::uint16_t symbolId) {
         return marketState_.getAskSizes(symbolId);
     }
 
-    Ticks getAskSize(std:uint16_t symbolId, std::size_t level) {
+    Ticks getAskSize(std::uint16_t symbolId, std::size_t level) {
         return marketState_.getAskSize(level, symbolId);
     }
 
-    Ticks getBidSize(std:uint16_t symbolId, std::size_t level) {
+    Ticks getBidSize(std::uint16_t symbolId, std::size_t level) {
         return marketState_.getBidSize(level, symbolId);
     }
 
@@ -117,26 +122,22 @@ class IMarketDataMultiSymbol {
 };
 
 
-template<std::size_t depth>
-class SingleSymbolMarketDataParquet : public IMarketData<depth> {
+template<std::size_t depth, std::uint16_t numberOfSymbols>
+class MarketDataParquet : public IMarketData<depth, numberOfSymbols> {
     public:
-    SingleSymbolMarketDataParquet(
-        const std::string& marketDataFilePath,
-        const std::unordered_map<std::string, std::uint16_t>& symbolIdMap);
+    MarketDataParquet(
+        const std::string& marketDataFilePath);
 
-    SingleSymbolMarketDataParquet(
-        const std::vector<std::string>& marketDataFilePaths,
-        const std::unordered_map<std::string, std::uint16_t>& symbolIdMap);
-
+    MarketDataParquet(
+        const std::vector<std::string>& marketDataFilePaths);
     protected:
     bool loadData() override;
     bool loadData(const std::string& marketDataFilePath) override;
 };
 
 // Explicit template instantiations for common depths
-template class IMarketData<1>;
-template class IMarketData<5>;
-template class IMarketData<10>;
+template class IMarketData<10, 4>;
+template class IMarketData<10, 1>;
 
 }  // namespace sim
 

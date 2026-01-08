@@ -3,6 +3,7 @@ export module simulation_engine:portfolio;
 
 import :order_placement;
 import :types;
+import :run_params;
 
 import std;
 
@@ -23,10 +24,10 @@ export namespace sim {
 * Tracks the average price and quantity for the symbol,
 * allowing for accurate P&L calculations and risk management.
 */
-template<std::uint16_t numberOfSymbols>
+template<std::uint16_t numberOfSymbols, typename Distribution>
 class Portfolio {
    public:
-    Portfolio(RunParams runParams) {
+    Portfolio(RunParams<Distribution> runParams) {
         cash = runParams.startingCash;
         settledFunds = runParams.startingCash;
         interestRate = runParams.interestRate;

@@ -6,30 +6,16 @@ import std;
 namespace sim {
 
 // Constructor
-template <std::size_t depth>
-Statistics<depth>::Statistics(const RunParams& simulationParams)
+template<std::size_t depth, typename Distribution>
+Statistics<depth, Distribution>::Statistics(const RunParams<Distribution>& simulationParams)
     : simulationParams_{simulationParams},
-    startingValue_{simulationParams.startingCash},
-    currentValue_{simulationParams.startingCash},
-    sampleRateSeconds_{simulationParams.statisticsUpateRateSeconds} {
-    // Initialize metrics
-    totalReturn_ = 0.0;
-    maxDrawdown_ = 0.0;
-    volatility_ = 0.0;
-    sharpeRatio_ = 0.0;
-
-    // Initialize tracking variables
-    maxValue_ = startingValue_;
-    minValue_ = startingValue_;
-    maxPosition_ = Quantity{0};
-    totalPositionValue_ = 0.0;
-    positionUpdates_ = 0;
-    previousEquity_ = Ticks{0};
-}
+    startingMarketValue_{simulationParams.startingCash},
+    sampleRateSeconds_{simulationParams.statisticsUpateRateSeconds},
+    runningStatistics{simulationParams} {}
 
 // Output methods
-template <std::size_t depth>
-void Statistics<depth>::outputSummary(std::ostream& outFile, VerbosityLevel verbosity) {
+template<std::size_t depth, typename Distribution>
+void Statistics<depth, Distribution>::outputSummary(std::ostream& outFile, VerbosityLevel verbosity) {
     switch (verbosity) {
         case VerbosityLevel::MINIMAL:
             outputMinimal(outFile);
@@ -43,35 +29,35 @@ void Statistics<depth>::outputSummary(std::ostream& outFile, VerbosityLevel verb
     }
 }
 
-template <std::size_t depth>
-void Statistics<depth>::outputMinimal(std::ostream& out) const {
+template<std::size_t depth, typename Distribution>
+void Statistics<depth, Distribution>::outputMinimal(std::ostream& out) const {
     outputHeader(out, "Simulation Results");
 
-    double finalMarketValue = runningStatistics.currentMarketValue;
+    double finalMarketValue = runningStatistics.previousPortfolioValue;
 
     // Calculate total return from current equity
     double totalReturn = 0.0;
-    if (startingValue_.value() != 0) {
-        totalReturn = (finalMarketValue - startingValue_.value()) / startingValue_.value();
+    if (startingMarketValue_.value() != 0) {
+        totalReturn = (finalMarketValue - startingMarketValue_.value()) / startingMarketValue_.value();
     }
 
-    out << "Starting Equity: " << formatTicksAsDollars(startingValue_) << std::endl;
+    out << "Starting Equity: " << formatTicksAsDollars(startingMarketValue_) << std::endl;
     out << "Final Portfolio Value: " << formatTicksAsDollars(finalMarketValue) << std::endl;
     out << "Total Return: " << formatPercentage(totalReturn) << std::endl;
-    out << "Max Drawdown: " << formatPercentage(calculateMaxDrawdownPercent()) << std::endl;
+    out << "Max Drawdown: " << formatPercentage(this->calculateMaxDrawdownPercent()) << std::endl;
     out << "Volatility: " << formatPercentage(calculateVolatility()) << std::endl;
-    out << "Sharpe Ratio: " << std::fixed << std::setprecision(4) << calculateSharpe() << std::endl;
-    out << "Interest Owed: " << formatTicksAsDollars(interestOwed_) << std::endl;
-    out << "Fills: " << fillsReceived_.size() << std::endl;
+    out << "Sharpe Ratio: " << std::fixed << std::setprecision(4) << calculateAnnualizedSharpeRatio() << std::endl;
+    out << "Interest Owed: " << formatTicksAsDollars(totalInterestOwed_) << std::endl;
+    out << "Fills: " << fillsHistory.size() << std::endl;
 }
 
-template <std::size_t depth>
-void Statistics<depth>::outputStandard(std::ostream& out) const {
+template<std::size_t depth, typename Distribution>
+void Statistics<depth, Distribution>::outputStandard(std::ostream& out) const {
     // Output the minimal output
     outputMinimal(out);
 
     // Additional metrics for STANDARD verbosity
-    double maxDrawdown = calculateMaxDrawdownPercent();
+    double maxDrawdown = this->calculateMaxDrawdownPercent();
     out << "Max Drawdown: " << formatPercentage(maxDrawdown) << std::endl;
 
     // Additionally, output orders and fills
@@ -79,8 +65,8 @@ void Statistics<depth>::outputStandard(std::ostream& out) const {
     outputFillsReceived(out);
 }
 
-template <std::size_t depth>
-void Statistics<depth>::outputDetailed(std::ostream& out) const {
+template<std::size_t depth, typename Distribution>
+void Statistics<depth, Distribution>::outputDetailed(std::ostream& out) const {
     // TODO: Detailed mode will show various stats about multiple simulation trials
     // when rerunning with different competition/liquidity hyperparameters
     // For now, detailed does nothing
@@ -93,30 +79,25 @@ void Statistics<depth>::outputDetailed(std::ostream& out) const {
     // outputFillsReceived(out);
 }
 
-template <std::size_t depth>
-void Statistics<depth>::outputHeader(std::ostream& out, const std::string& title) const {
+template<std::size_t depth, typename Distribution>
+void Statistics<depth, Distribution>::outputHeader(std::ostream& out, const std::string& title) const {
     out << "\n" << title << "\n";
     out << std::string(title.length(), '-') << "\n";
 }
 
-template <std::size_t depth>
-void Statistics<depth>::outputSeparator(std::ostream& out) const {
+template<std::size_t depth, typename Distribution>
+void Statistics<depth, Distribution>::outputSeparator(std::ostream& out) const {
     out << "\n" << std::string(50, '=') << "\n";
 }
 
-template <std::size_t depth>
-void Statistics<depth>::updateInterestOwed(Ticks interestOwed) {
-    interestOwed_ = interestOwed;
-}
-
-template <std::size_t depth>
-void Statistics<depth>::outputOrdersPlaced(std::ostream& out) const {
+template<std::size_t depth, typename Distribution>
+void Statistics<depth, Distribution>::outputOrdersPlaced(std::ostream& out) const {
     outputHeader(out, "Orders Placed");
 
-    if (ordersPlaced_.empty()) {
+    if (orderHistory.empty()) {
         out << "No orders were placed during the simulation." << std::endl;
     } else {
-        out << "Total Orders Placed: " << ordersPlaced_.size() << std::endl;
+        out << "Total Orders Placed: " << orderHistory.size() << std::endl;
         out << std::endl;
 
         out << std::left << std::setw(8) << "OrderID" << std::setw(8) << "Symbol" << std::setw(6)
@@ -124,7 +105,7 @@ void Statistics<depth>::outputOrdersPlaced(std::ostream& out) const {
             << "Price" << std::setw(8) << "TIF" << std::setw(30) << "Timestamp" << std::endl;
         out << std::string(95, '-') << std::endl;
 
-        for (const auto& orderWithTimestamp : ordersPlaced_) {
+        for (const auto& orderWithTimestamp : orderHistory) {
             const auto& order = orderWithTimestamp.order;
             out << std::left << std::setw(8) << order.id.value() << std::setw(8)
                 << order.symbol.value() << std::setw(6) << formatOrderInstruction(order.instruction)
@@ -136,14 +117,14 @@ void Statistics<depth>::outputOrdersPlaced(std::ostream& out) const {
     }
 }
 
-template <std::size_t depth>
-void Statistics<depth>::outputFillsReceived(std::ostream& out) const {
+template<std::size_t depth, typename Distribution>
+void Statistics<depth, Distribution>::outputFillsReceived(std::ostream& out) const {
     outputHeader(out, "Fills Received");
 
-    if (fillsReceived_.empty()) {
+    if (fillsHistory.empty()) {
         out << "No fills were received during the simulation." << std::endl;
     } else {
-        out << "Total Fills Received: " << fillsReceived_.size() << std::endl;
+        out << "Total Fills Received: " << fillsHistory.size() << std::endl;
         out << std::endl;
 
         out << std::left << std::setw(8) << "OrderID" << std::setw(8) << "Symbol" << std::setw(6)
@@ -151,9 +132,9 @@ void Statistics<depth>::outputFillsReceived(std::ostream& out) const {
             << "Timestamp" << std::endl;
         out << std::string(79, '-') << std::endl;
 
-        for (const auto& fill : fillsReceived_) {
+        for (const auto& fill : fillsHistory) {
             out << std::left << std::setw(8) << fill.id.value() << std::setw(8)
-                << fill.symbol.value() << std::setw(6) << formatOrderInstruction(fill.instruction)
+                << fill.symbol << std::setw(6) << formatOrderInstruction(fill.instruction)
                 << std::setw(12) << fill.quantity.value() << std::setw(15)
                 << formatTicksAsDollars(fill.price) << std::setw(30)
                 << datetime::DateTime::fromEpochTime(fill.timestamp.value(), true) << std::endl;
@@ -163,30 +144,30 @@ void Statistics<depth>::outputFillsReceived(std::ostream& out) const {
 
 
 //Methods to format data for output
-template <std::size_t depth>
-std::string Statistics<depth>::formatTicksAsDollars(Ticks ticks) const {
+template<std::size_t depth, typename Distribution>
+std::string Statistics<depth, Distribution>::formatTicksAsDollars(Ticks ticks) const {
     std::ostringstream oss;
     oss << std::fixed << std::setprecision(2) << "$"
         << (static_cast<double>(ticks.value()) / 1'000'000.0);
     return oss.str();
 }
 
-template <std::size_t depth>
-std::string Statistics<depth>::formatCurrency(double amount) const {
+template<std::size_t depth, typename Distribution>
+std::string Statistics<depth, Distribution>::formatCurrency(double amount) const {
     std::ostringstream oss;
     oss << std::fixed << std::setprecision(2) << "$" << amount;
     return oss.str();
 }
 
-template <std::size_t depth>
-std::string Statistics<depth>::formatPercentage(double value) const {
+template<std::size_t depth, typename Distribution>
+std::string Statistics<depth, Distribution>::formatPercentage(double value) const {
     std::ostringstream oss;
     oss << std::fixed << std::setprecision(2) << (value * 100.0) << "%";
     return oss.str();
 }
 
-template <std::size_t depth>
-std::string Statistics<depth>::formatOrderInstruction(OrderInstruction instruction) const {
+template<std::size_t depth, typename Distribution>
+std::string Statistics<depth, Distribution>::formatOrderInstruction(OrderInstruction instruction) const {
     switch (instruction) {
         case OrderInstruction::Buy:
             return "BUY";
@@ -197,8 +178,8 @@ std::string Statistics<depth>::formatOrderInstruction(OrderInstruction instructi
     }
 }
 
-template <std::size_t depth>
-std::string Statistics<depth>::formatOrderType(OrderType orderType) const {
+template<std::size_t depth, typename Distribution>
+std::string Statistics<depth, Distribution>::formatOrderType(OrderType orderType) const {
     switch (orderType) {
         case OrderType::Limit:
             return "LIMIT";
@@ -215,8 +196,8 @@ std::string Statistics<depth>::formatOrderType(OrderType orderType) const {
     }
 }
 
-template <std::size_t depth>
-std::string Statistics<depth>::formatTimeInForce(TimeInForce timeInForce) const {
+template<std::size_t depth, typename Distribution>
+std::string Statistics<depth, Distribution>::formatTimeInForce(TimeInForce timeInForce) const {
     switch (timeInForce) {
         case TimeInForce::Day:
             return "DAY";
@@ -233,49 +214,47 @@ std::string Statistics<depth>::formatTimeInForce(TimeInForce timeInForce) const 
 
 
 // Methods to update class members
-template<std::size_t depth>
-void Statistics<depth>::updateStatistics(Ticks portfolioLiquidationValue) {
-    double portfolioLiquidationValueAsDouble = std::static_cast<double>(portfolioLiquidationValue.value());
+template<std::size_t depth, typename Distribution>
+void Statistics<depth, Distribution>::updateStatistics(Ticks portfolioLiquidationValue) {
+    double portfolioLiquidationValueAsDouble = static_cast<double>(portfolioLiquidationValue.value());
     runningStatistics.update(portfolioLiquidationValueAsDouble, sampleRateSeconds_);
 }
 
-template <std::size_t depth>
-void Statistics<depth>::recordOrder(const NewOrder& order, TimeStamp timestamp) {
+template<std::size_t depth, typename Distribution>
+void Statistics<depth, Distribution>::recordOrder(const NewOrder& order, TimeStamp timestamp) {
     OrderWithTimestamp orderWithTimestamp;
     orderWithTimestamp.order = order;
     orderWithTimestamp.timestamp = timestamp;
-    ordersPlaced_.push_back(orderWithTimestamp);
+    orderHistory.push_back(orderWithTimestamp);
 }
 
-template <std::size_t depth>
-void Statistics<depth>::recordFill(const Fill& fill) {
-    fillsReceived_.push_back(fill);
+template<std::size_t depth, typename Distribution>
+void Statistics<depth, Distribution>::recordFill(const Fill& fill) {
+    fillsHistory.push_back(fill);
 }
 
-template <std::size_t depth>
-void Statistics<depth>::updateInterestOwed(Ticks interestOwed) {
-    interestOwed_ = interestOwed;
+template<std::size_t depth, typename Distribution>
+void Statistics<depth, Distribution>::updateInterestOwed(Ticks interestOwed) {
+    totalInterestOwed_ = interestOwed;
 }
 
-template<std::size_t depth>
-double Statistics<depth>::calculateVolatility() {
+template<std::size_t depth, typename Distribution>
+double Statistics<depth, Distribution>::calculateVolatility() const {
     return runningStatistics.calculateAnnualizedVolatility(sampleRateSeconds_);
 }
 
-template<std::size_t depth>
-double Statistics<depth>::calculateAnnualizedSharpeRatio() {
+template<std::size_t depth, typename Distribution>
+double Statistics<depth, Distribution>::calculateAnnualizedSharpeRatio() const {
     return runningStatistics.getSharpe(sampleRateSeconds_);
 }
 
-template<std::size_t depth>
-double Statistics<depth>::calculateMaxDrawdownPercent() {
+template<std::size_t depth, typename Distribution>
+double Statistics<depth, Distribution>::calculateMaxDrawdownPercent() const {
     Ticks minimumMarketValue = runningStatistics.minimum();
-    return (std::static_cast<double>(startingMarketValue_) - minimumMarketValue) / std::static_cast<double>(startingMarketValue_);
+    return (startingMarketValue_.value() - minimumMarketValue.value()) / startingMarketValue_.value();
 }
 
 // Explicit template instantiations for common depths
-template class Statistics<1>;
-template class Statistics<5>;
-template class Statistics<10>;
+//TODO: template class Statistics<10>;
 
 }  // namespace sim

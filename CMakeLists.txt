@@ -33,6 +33,7 @@ target_sources(simulation_engine
         include/simulation_engine/simulation_engine.cppm
         include/simulation_engine/types.cppm
         include/simulation_engine/quote.cppm
+        include/simulation_engine/market_state.cppm
         include/simulation_engine/market_data.cppm
         include/simulation_engine/engine.cppm
         include/simulation_engine/portfolio.cppm
@@ -54,7 +55,6 @@ target_sources(simulation_engine
         src/engine.cpp
         src/statistics.cpp
         src/portfolio.cpp
-        src/strategy_interface.cpp
 
         # lib packages
         lib/datetime/src/date.cpp
@@ -77,7 +77,7 @@ target_link_libraries(simulation_engine PRIVATE
 )
 
 # --- Example Strategy Executables ---
-set(EXAMPLES market_order_example limit_order_example)
+set(EXAMPLES limit_order_example) #market_order_example limit_order_example)
 
 foreach(EXAMPLE ${EXAMPLES})
     add_executable(${EXAMPLE} examples/${EXAMPLE}.cpp)

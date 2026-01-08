@@ -1,3 +1,4 @@
+// engine.cppm
 export module simulation_engine:engine;
 
 import std;
@@ -13,10 +14,11 @@ import :quote;
 
 export namespace sim {
 
+template <std::uint16_t numberOfSymbols, typename Distribution>
 struct Result {
-    std::vector<Fill> fills;         // Vector of all fills during simulation
-    Portfolio finalPortfolio;        // Final portfolio state
-    std::size_t quotesProcessed{0};  // Total number of quotes processed
+    std::vector<Fill> fills;  // Vector of all fills during simulation
+    Portfolio<numberOfSymbols, Distribution> finalPortfolio;  // Final portfolio state
+    std::size_t quotesProcessed{0};                           // Total number of quotes processed
 };
 
 struct ExecutionResult {
@@ -25,18 +27,18 @@ struct ExecutionResult {
     bool isComplete;          // True if order is fully filled
 };
 
-
-
-template <std::size_t depth, std::uint16_t numberofSymbols, typename Distribution>
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
 class Engine final {
    public:
     /**
      * @brief Construct a new Engine object.
-     * @details Initializes the simulation environment with market data providers and execution parameters.
+     * @details Initializes the simulation environment with market data providers and execution
+     * parameters.
      * @param marketData Unique pointer to the market data source.
      * @param params Configuration parameters for the simulation run.
      */
-    Engine(std::unique_ptr<IMarketData<depth>> marketData, RunParams params);
+    Engine(std::unique_ptr<IMarketData<depth, numberOfSymbols>> marketData,
+        RunParams<Distribution> params);
 
     /**
      * @brief Start and manage the simulation loop.
@@ -46,41 +48,17 @@ class Engine final {
      * @param out The output stream for logging.
      * @return A Result struct containing fills, final portfolio, and processing stats.
      */
-    Result run(IStrategy<depth>& strat,
-        VerbosityLevel verbosity = VerbosityLevel::STANDARD,
-        std::ostream& out = std::cout
-    );
-
-    /**
-     * @brief Retrieve the current state of the portfolio.
-     * @return A constant reference to the Portfolio object.
-     */
-    const Portfolio<numberOfSymbols>& portfolio() const;
+    Result<numberOfSymbols, Distribution> run(
+        IStrategy<depth, numberOfSymbols, Distribution>& strat,
+        std::ostream& out = std::cout);
 
     /**
      * @brief Calculate the total mark-to-market value of the portfolio.
-     * @details Combines cash balances and the value of open positions based on current market prices.
+     * @details Combines cash balances and the value of open positions based on current market
+     * prices.
      * @return The total value in Ticks.
      */
     Ticks currentPortfolioValue() const;
-
-    /**
-     * @brief Provide access to the underlying market data provider.
-     * @return A constant reference to the MarketData object.
-     */
-    const MarketData<depth, numberOfSymbols>& marketData() const;
-
-    /**
-     * @brief Provide access to the current snapshots of the market.
-     * @return A constant reference to the MarketState object.
-     */
-    const MarketState<depth, numberOfSymbols>& marketState() const;
-
-    /**
-     * @brief Retrieve performance and simulation statistics.
-     * @return A constant reference to the Statistics object.
-     */
-    const Statistics& statistics() const;
 
     /**
      * @brief Validate if the account has enough equity/margin to support a new order.
@@ -101,13 +79,12 @@ class Engine final {
      * @param price Limit price (if applicable).
      * @return The unique OrderId assigned to the new order.
      */
-    OrderId placeOrder(SymbolId symbol,
+    OrderId placeOrder(std::uint16_t symbol,
         OrderInstruction instruction,
         OrderType orderType,
         Quantity quantity,
         TimeInForce timeInForce = TimeInForce::Day,
-        Ticks price = Ticks{0}
-    );
+        Ticks price = Ticks{0});
 
     /**
      * @brief Request the cancellation of an existing order.
@@ -126,14 +103,14 @@ class Engine final {
     bool replace(OrderId orderId, Quantity newQuantity, Ticks newPrice);
 
    private:
-    RunParams params_;
-    std::unique_ptr<IMarketData<depth>> marketData;
-    IStrategy<depth>* strategy{nullptr};
-    Portfolio portfolio;
+    RunParams<Distribution> params_;
+    std::unique_ptr<IMarketData<depth, numberOfSymbols>> marketData;
+    IStrategy<depth, numberOfSymbols, Distribution>* strategy{nullptr};
+    Portfolio<numberOfSymbols, Distribution> portfolio;
     Distribution buyFillRateDistribution;
     Distribution sellFillRateDistribution;
     std::mt19937& randomNumberGenerator;
-    Statistics<depth> statistics;
+    Statistics<depth, Distribution> statistics;
     VerbosityLevel verbosityLevel;
     int statisticsUpateRateSeconds;
     std::uint8_t leverageFactor;
@@ -149,12 +126,29 @@ class Engine final {
     OrderId nextOrderId{1};
     TimeStamp lastSettlementDate{0};
 
+    Ticks estimateTotalOrderPrice(NewOrder order);
+
+    Quantity numberOfSharesToFillForLimitOrder(const Quote<depth>& quote,
+        OrderInstruction orderInstruction,
+        Ticks price,
+        Quantity desiredNumberOfShares);
+
+    Quantity numberOfSharesToFillForMarketOrder(const Quote<depth>& quote,
+        OrderInstruction orderInstruction,
+        Quantity desiredNumberOfShares);
+
+    double determineFillRate(std::mt19937& rng, OrderInstruction orderInstruction);
+
+    Ticks averageExecutionPrice(const Quote<depth>& quote,
+        Quantity numberOfShares,
+        OrderInstruction orderInstruction);
+
     /**
      * @brief Deliver execution and order updates to the strategy.
      * @details Respects receive latency by only notifying the strategy once the time has passed.
      * @param strategy The strategy instance to notify.
      */
-    void processPendingNotifications(IStrategy<depth>& strategy);
+    void processPendingNotifications(IStrategy<depth, numberOfSymbols, Distribution>& strategy);
 
     /**
      * @brief Handle daily clearing and settlement logic.
@@ -212,7 +206,8 @@ class Engine final {
      * @param strategy The strategy being tested.
      * @return The final results of the simulation.
      */
-    Result simulate(IStrategy<depth>& strategy);
+    Result<numberOfSymbols, Distribution> simulate(
+        IStrategy<depth, numberOfSymbols, Distribution>& strategy);
 
     /**
      * @brief Attempt to match a single order against the current market quote.
@@ -222,7 +217,7 @@ class Engine final {
      * @param quote The current market depth for matching.
      * @return ExecutionResult containing any generated fills and remaining quantity.
      */
-    ExecutionResult tryExecute(const NewOrder& newOrder, TimeStamp sendTs, const Quote<depth>& quote);
+    ExecutionResult tryExecute(const NewOrder& newOrder, TimeStamp sendTs);
 
     /**
      * @brief Check if the simulation time falls within allowed trading hours.

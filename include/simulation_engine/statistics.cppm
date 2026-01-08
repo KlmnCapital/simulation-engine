@@ -10,25 +10,21 @@ import :types;
 
 export namespace sim {
 
-// Define enum classes for safer input parameters.
-enum class VerbosityLevel : std::uint8_t { 
-    MINIMAL = 0,
-    STANDARD = 1, 
-    DETAILED = 2
-};
+template<typename Distribution>
+class RunningStatistics {
+   public:
+    RunningStatistics(RunParams<Distribution> params)
+    : totalSamples{0},
+      averageReturn{0.0},
+      sumOfSquaredDifferences{0.0},
+      minimumPortfolioValue{params.startingCash},
+      previousPortfolioValue{params.startingCash} {}
 
-enum class Metric : std::uint8_t { 
-    Dollars = 0, 
-    Percent = 1, 
-    Quantity = 2 
-};
-
-struct RunningSimulationStatistics {
-    uint64_t totalSamples = 0;
-    double averageReturn = 0.0;
-    double sumOfSquaredDifferences = 0.0; // M2 in Welford's
-    double minimumPortfolioValue = std::numeric_limits<double>::max();
-    double previousPortfolioValue = 0.0;
+    std::uint64_t totalSamples;
+    double averageReturn;
+    double sumOfSquaredDifferences; // M2 in Welford's
+    double minimumPortfolioValue;
+    double previousPortfolioValue;
 
     /**
      * @brief Updates statistics using the current portfolio value.
@@ -60,7 +56,7 @@ struct RunningSimulationStatistics {
     }
 
     double getStandardDeviation() const {
-        return std::sqrt(getReturnVariance());
+        return std::sqrt(getVariance());
     }
 
     /**
@@ -68,7 +64,7 @@ struct RunningSimulationStatistics {
      * @param samplesPerYear How many update() calls happen in a year (e.g., 252 for daily, 98280 for minutes)
      */
     double calculateAnnualizedVolatility(double samplesPerYear) const {
-        return getReturnStandardDeviation() * std::sqrt(samplesPerYear);
+        return getStandardDeviation() * std::sqrt(samplesPerYear);
     }
 
     /**
@@ -77,7 +73,7 @@ struct RunningSimulationStatistics {
      * @param samplesPerYear The frequency of samples per year
      */
     double calculateAnnualizedSharpeRatio(double annualizedRiskFreeRate, double samplesPerYear) const {
-        double stdev = getReturnStandardDeviation();
+        double stdev = getStandardDeviation();
         if (stdev == 0.0) return 0.0;
 
         // Convert annual risk-free rate to the rate for our specific sampling period
@@ -89,26 +85,26 @@ struct RunningSimulationStatistics {
     }
 };
 
-template <std::size_t depth>
+template <std::size_t depth, typename Distribution>
 class Statistics {
 public:
-    Statistics(const RunParams& simulationParams);
+    Statistics(const RunParams<Distribution>& simulationParams);
 
     void outputSummary(std::ostream& outFile, VerbosityLevel verbosity);
 
     void recordOrder(const NewOrder& order, TimeStamp timestamp);
     void recordFill(const Fill& fill);
-    void updateStatistics(double portfolioLiquidationValue);
+    void updateStatistics(Ticks portfolioLiquidationValue);
 
     void updateInterestOwed(Ticks interestOwed);
 
 private:
-    const RunParams& simulationParams_;
+    const RunParams<Distribution>& simulationParams_;
 
     Ticks startingMarketValue_;
     Ticks totalInterestOwed_{0};
 
-    RunningStatistics runningStatistics;
+    RunningStatistics<Distribution> runningStatistics;
     int sampleRateSeconds_;
 
     // Structure to track orders with timestamps
@@ -140,8 +136,9 @@ private:
     std::string formatPercentage(double value) const;
 
     // Private methods for real-time metric updates
-    double calculateVolatility();
-    double calculateSharpe();
-    Ticks calcualteMaxDrawdown();
+    double calculateVolatility() const;
+    double calculateAnnualizedSharpeRatio() const;
+    double calculateMaxDrawdownPercent() const;
+};
 
-}  // namespace sim
+} // namespace sim

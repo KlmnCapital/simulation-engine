@@ -24,17 +24,17 @@ export namespace sim {
         const Ticks& getBidSize(std::size_t priceLevel) const;
         const Ticks& getAskSize(std::size_t priceLevel) const;
 
-        std::array<Ticks, depth>& getBids() const;
-        std::array<Ticks, depth>& getAsks() const;
-        std::array<Ticks, depth>& getBidSizes() const;
-        std::array<Ticks, depth>& getAskSizes() const;
+        std::array<Ticks, depth> getBids() const;
+        std::array<Ticks, depth> getAsks() const;
+        std::array<Ticks, depth> getBidSizes() const;
+        std::array<Ticks, depth> getAskSizes() const;
     };
 
     template <std::size_t depth>
     inline const Ticks& Quote<depth>::bestBid() const {
         // Find first valid (non-zero) bid price
         for (std::size_t i = 0; i < depth; ++i) {
-            if (prices.value() > 0) {
+            if (prices[i].value() > 0) {
                 return prices[i];
             }
         }
@@ -43,8 +43,8 @@ export namespace sim {
 
     template <std::size_t depth>
     inline const Ticks& Quote<depth>::bestAsk() const {
-        // Find first valid (non-zero) ask price
-        for (std::size_t i = 0; i < depth; ++i) {
+        // Find first valid (non-zero) ask price 
+        for (std::size_t i = 0; i < depth; ++i) { 
             if (prices[depth + i].value() > 0) {
                 return prices[depth + i];
             }
@@ -120,4 +120,6 @@ export namespace sim {
         return askSizes;
     }
 
-};  // namespace sim
+template struct Quote<10>;
+
+} // namespace sim

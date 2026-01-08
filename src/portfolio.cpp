@@ -5,8 +5,8 @@ import std;
 
 namespace sim {
 
-template<std::uint16_t numberOfSymbols>
-void Portfolio<numberOfSymbols>::updatePortfolio(const Fill& fill) {
+template<std::uint16_t numberOfSymbols, typename Distribution>
+void Portfolio<numberOfSymbols, Distribution>::updatePortfolio(const Fill& fill) {
     const std::uint16_t symbolId = fill.symbol;
     const Quantity fillQuantity = fill.quantity;
     const Ticks fillPrice = fill.price;
@@ -72,31 +72,31 @@ void Portfolio<numberOfSymbols>::updatePortfolio(const Fill& fill) {
 }
 
 
-template<std::uint16_t numberOfSymbols>
-Ticks Portfolio<numberOfSymbols>::grossMarketValue(const std::array<Ticks, numberOfSymbols>& bestBids, const std::array<Ticks, numberOfSymbols>& bestAsks) const {
+template<std::uint16_t numberOfSymbols, typename Distribution>
+Ticks Portfolio<numberOfSymbols, Distribution>::grossMarketValue(const std::array<Ticks, numberOfSymbols>& bestBids, const std::array<Ticks, numberOfSymbols>& bestAsks) const {
     Ticks currentLongMarketValue = longMarketValue(bestBids);
     Ticks currentShortMarketValue = shortMarketValue(bestAsks);
 
     return currentLongMarketValue + currentShortMarketValue;
 }
 
-template<std::uint16_t numberOfSymbols>
-Ticks Portfolio<numberOfSymbols>::netMarketValue(const std::array<Ticks, numberOfSymbols>& bestBids, const std::array<Ticks, numberOfSymbols>& bestAsks) const {
+template<std::uint16_t numberOfSymbols, typename Distribution>
+Ticks Portfolio<numberOfSymbols, Distribution>::netMarketValue(const std::array<Ticks, numberOfSymbols>& bestBids, const std::array<Ticks, numberOfSymbols>& bestAsks) const {
     Ticks currentLongMarketValue = longMarketValue(bestBids);
     Ticks currentShortMarketValue = shortMarketValue(bestAsks);
 
     return currentLongMarketValue - currentShortMarketValue;
 }
 
-template<std::uint16_t numberOfSymbols>
-Ticks Portfolio<numberOfSymbols>::netLiquidationValue(const std::array<Ticks, numberOfSymbols>& bestBids, const std::array<Ticks, numberOfSymbols>& bestAsks) const {
+template<std::uint16_t numberOfSymbols, typename Distribution>
+Ticks Portfolio<numberOfSymbols, Distribution>::netLiquidationValue(const std::array<Ticks, numberOfSymbols>& bestBids, const std::array<Ticks, numberOfSymbols>& bestAsks) const {
     Ticks currentNetMarketValue = netMarketValue(bestBids, bestAsks);
 
     return cash + currentNetMarketValue - (loan + interestOwed);
 }
 
-template<std::uint16_t numberOfSymbols>
-Ticks Portfolio<numberOfSymbols>::longMarketValue(std::array<Ticks, numberOfSymbols>& bestBids) const {
+template<std::uint16_t numberOfSymbols, typename Distribution>
+Ticks Portfolio<numberOfSymbols, Distribution>::longMarketValue(const std::array<Ticks, numberOfSymbols>& bestBids) const {
     // Perform inner produce on bestBids and longQuantity to get the marketValue of the long positions
     // Note: This could be more accurate by accounting for numher of shares at each level, but since 
     // this method is not used in the core logic of fills, we simplify it here.
@@ -108,8 +108,8 @@ Ticks Portfolio<numberOfSymbols>::longMarketValue(std::array<Ticks, numberOfSymb
     );
 }
 
-template<std::uint16_t numberOfSymbols>
-Ticks Portfolio<numberOfSymbols>::shortMarketValue(std::array<Ticks, numberOfSymbols>& bestAsks) const { 
+template<std::uint16_t numberOfSymbols, typename Distribution>
+Ticks Portfolio<numberOfSymbols, Distribution>::shortMarketValue(const std::array<Ticks, numberOfSymbols>& bestAsks) const { 
     // Perform inner produce on bestBids and longQuantity to get the marketValue of the long positions
     // Note: This could be more accurate by accounting for numher of shares at each level, but since 
     // this method is not used in the core logic of fills, we simplify it here.
@@ -122,13 +122,13 @@ Ticks Portfolio<numberOfSymbols>::shortMarketValue(std::array<Ticks, numberOfSym
 }
 
 
-template<std::uint16_t numberOfSymbols>
-Ticks Portfolio<numberOfSymbols>::loanNeeded(Ticks purchaseAmount) const {
+template<std::uint16_t numberOfSymbols, typename Distribution>
+Ticks Portfolio<numberOfSymbols, Distribution>::loanNeeded(Ticks purchaseAmount) const {
     return (purchaseAmount - cash > Ticks{0} ? purchaseAmount - cash : Ticks{0});
 }
 
-template<std::uint16_t numberOfSymbols>
-Ticks Portfolio<numberOfSymbols>::calculateMarginAmount(Ticks purchaseAmount) const {
+template<std::uint16_t numberOfSymbols, typename Distribution>
+Ticks Portfolio<numberOfSymbols, Distribution>::calculateMarginAmount(Ticks purchaseAmount) const {
     // Margin amount is the difference between purchase amount and available settled funds
     if (purchaseAmount > settledFunds) {
         return purchaseAmount - settledFunds;
@@ -136,29 +136,29 @@ Ticks Portfolio<numberOfSymbols>::calculateMarginAmount(Ticks purchaseAmount) co
     return Ticks{0};
 }
 
-template<std::uint16_t numberOfSymbols>
-Ticks Portfolio<numberOfSymbols>::calculateSettledFundsUsed(Ticks purchaseAmount) const {
+template<std::uint16_t numberOfSymbols, typename Distribution>
+Ticks Portfolio<numberOfSymbols, Distribution>::calculateSettledFundsUsed(Ticks purchaseAmount) const {
     // Use settled funds up to the purchase amount, or all settled funds if purchase is larger
     return std::min(purchaseAmount, settledFunds);
 }
 
-template<std::uint16_t numberOfSymbols>
-bool Portfolio<numberOfSymbols>::canMakePurchase(Ticks purchaseAmount) const {
+template<std::uint16_t numberOfSymbols, typename Distribution>
+bool Portfolio<numberOfSymbols, Distribution>::canMakePurchase(Ticks purchaseAmount) const {
     // Can make purchase if we have enough total cash (settled + unsettled)
     // This allows for margin trading as long as total cash is sufficient
-    if (loan) {
+    if (cash > purchaseAmount) {
         return cash >= purchaseAmount;
     }
     return settledFunds >= purchaseAmount;
 }
 
-template<std::uint16_t numberOfSymbols>
-bool Portfolio<numberOfSymbols>::hasSufficientSettledFunds(Ticks purchaseAmount) const {
+template<std::uint16_t numberOfSymbols, typename Distribution>
+bool Portfolio<numberOfSymbols, Distribution>::hasSufficientSettledFunds(Ticks purchaseAmount) const {
     return settledFunds >= purchaseAmount;
 }
 
-template<std::uint16_t numberOfSymbols>
-void Portfolio<numberOfSymbols>::calculateDailyInterest(TimeStamp currentTime) {
+template<std::uint16_t numberOfSymbols, typename Distribution>
+void Portfolio<numberOfSymbols, Distribution>::calculateDailyInterest(TimeStamp currentTime) {
     // Only calculate interest if there's an outstanding loan
     if (loan <= Ticks{0}) {
         return;
@@ -176,14 +176,14 @@ void Portfolio<numberOfSymbols>::calculateDailyInterest(TimeStamp currentTime) {
     interestOwed += interestTicks;
 }
 
-template<std::uint16_t numberOfSymbols>
-Ticks Portfolio<numberOfSymbols>::maintenanceRequirement(const std::array<Ticks, numberOfSymbols>& bestBids, const std::array<Ticks, numberOfSymbols>& bestAsks) const {
+template<std::uint16_t numberOfSymbols, typename Distribution>
+Ticks Portfolio<numberOfSymbols, Distribution>::maintenanceRequirement(const std::array<Ticks, numberOfSymbols>& bestBids, const std::array<Ticks, numberOfSymbols>& bestAsks) const {
     Ticks grossMarketValue = grossMarketValue(bestBids, bestAsks);
     return grossMarketValue * 3 / 10;  // 30%
 }
 
-template<std::uint16_t numberOfSymbols>
-Ticks Portfolio<numberOfSymbols>::payInterest(Ticks amount) {
+template<std::uint16_t numberOfSymbols, typename Distribution>
+Ticks Portfolio<numberOfSymbols, Distribution>::payInterest(Ticks amount) {
     // If amount is 0, pay all interest owed
     Ticks amountToPay = (amount == Ticks{0}) ? interestOwed : amount;
 
@@ -200,8 +200,8 @@ Ticks Portfolio<numberOfSymbols>::payInterest(Ticks amount) {
     return amountToPay;
 }
 
-template<std::uint16_t numberOfSymbols>
-void Portfolio<numberOfSymbols>::addUnsettledFunds(Ticks amount, TimeStamp currentTime) {
+template<std::uint16_t numberOfSymbols, typename Distribution>
+void Portfolio<numberOfSymbols, Distribution>::addUnsettledFunds(Ticks amount, TimeStamp currentTime) {
     // 36 hours = 36 * 60 * 60 * 1e9 nanoseconds (assuming TimeStamp is in nanoseconds)
     constexpr TimeStamp settlementDelay{25ULL * 60 * 60 * 1000000000ULL};
     TimeStamp settlementTime = currentTime + settlementDelay;
@@ -209,8 +209,8 @@ void Portfolio<numberOfSymbols>::addUnsettledFunds(Ticks amount, TimeStamp curre
     pendingFunds_.emplace_back(UnsettledFunds{settlementTime, amount});
 }
 
-template<std::uint16_t numberOfSymbols>
-void Portfolio<numberOfSymbols>::processSettlements(TimeStamp currentTime) {
+template<std::uint16_t numberOfSymbols, typename Distribution>
+void Portfolio<numberOfSymbols, Distribution>::processSettlements(TimeStamp currentTime) {
     auto it = pendingFunds_.begin();
     while (it != pendingFunds_.end()) {
         if (it->earliestSettlement <= currentTime) {
@@ -224,18 +224,18 @@ void Portfolio<numberOfSymbols>::processSettlements(TimeStamp currentTime) {
     }
 }
 
-template<std::uint16_t numberOfSymbols>
-bool Portfolio<numberOfSymbols>::violatesMarginRequirement(const std::array<Ticks, numberOfSymbols>& bestBids, const std::array<Ticks, numberOfSymbols>& bestAsks) const {
+template<std::uint16_t numberOfSymbols, typename Distribution>
+bool Portfolio<numberOfSymbols, Distribution>::violatesMarginRequirement(const std::array<Ticks, numberOfSymbols>& bestBids, const std::array<Ticks, numberOfSymbols>& bestAsks) const {
     Ticks currentEquity = netLiquidationValue(bestBids, bestAsks);
-    Ticks mainenanceReq = maintenanceRequirement(bestBids, bestAsks);
+    Ticks maintenanceReq = maintenanceRequirement(bestBids, bestAsks);
     if (currentEquity < maintenanceReq) {
         return true;
     }
     return false;
 }
 
-template<std::uint16_t numberOfSymbols>
-bool Portfolio<numberOfSymbols>::sufficientEquityForOrder(
+template<std::uint16_t numberOfSymbols, typename Distribution>
+bool Portfolio<numberOfSymbols, Distribution>::sufficientEquityForOrder(
     const std::array<Ticks, numberOfSymbols>& bestBids,
     const std::array<Ticks, numberOfSymbols>& bestAsks,
     const NewOrder& order, 
