@@ -54,8 +54,6 @@ int main() {
 
     auto dataManager = std::make_unique<sim::MarketDataParquet<10, 1>>(filePaths);
 
-    // std::unique_ptr<sim::IMarketData<10, 1>> baseDataManager = std::move(dataManager);
-
     sim::MarketOrderExampleStrategy strat{params};
 
     sim::Engine<10, 1, sim::ConstantDistribution> engine(std::move(dataManager), params);
