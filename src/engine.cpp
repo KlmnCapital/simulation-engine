@@ -9,26 +9,30 @@ import datetime;
 
 namespace sim {
 
-template<std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
-Engine<depth, numberOfSymbols, Distribution>::Engine(std::unique_ptr<IMarketData<depth, numberOfSymbols>> marketData, RunParams<Distribution> params)
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
+Engine<depth, numberOfSymbols, Distribution>::Engine(
+    std::unique_ptr<IMarketData<depth, numberOfSymbols>> marketData,
+    RunParams<Distribution> params)
     : marketData(std::move(marketData)),
       params_(params),
       statistics(params),
       portfolio(params),
       buyFillRateDistribution{params.buyFillRateDistribution},
       sellFillRateDistribution{params.sellFillRateDistribution},
+      randomNumberGenerator{std::random_device{}()},
       verbosityLevel{params.verbosityLevel},
-      statisticsUpateRateSeconds{params.statisticsUpateRateSeconds},
+      statisticsUpdateRateSeconds{params.statisticsUpdateRateSeconds},
       sendLatencyNs{params.sendLatencyNanoseconds},
       receiveLatencyNs{params.receiveLatencyNanoseconds},
-      totalLatencyNs{params.receiveLatencyNs + params.sendLatencyNanoseconds},
+      totalLatencyNs{params.receiveLatencyNanoseconds + params.sendLatencyNanoseconds},
       leverageFactor{params.leverageFactor} {}
 
-template<std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
 bool Engine<depth, numberOfSymbols, Distribution>::canTrade(TimeStamp currentTimeStamp) const {
     if (!params_.enforceTradingHours) return true;
 
-    datetime::DateTime currentDateTime = datetime::DateTime::fromEpochTime(static_cast<std::uint64_t>(currentTimeStamp));
+    datetime::DateTime currentDateTime =
+        datetime::DateTime::fromEpochTime(static_cast<std::uint64_t>(currentTimeStamp));
 
     if (currentDateTime.isWeekend()) return false;
 
@@ -36,9 +40,9 @@ bool Engine<depth, numberOfSymbols, Distribution>::canTrade(TimeStamp currentTim
     double timeAsDecimal = currentDateTime.timeAsDecimal();
 
     // Define UTC Windows
-    double regularStart = isDST ? 13.5 : 14.5; // 13:30 or 14:30 UTC
-    double regularEnd = isDST ? 20.0 : 21.0; // 20:00 or 21:00 UTC
-    double preStart = 9.0;                 // 09:00 UTC (Fixed)
+    double regularStart = isDST ? 13.5 : 14.5;  // 13:30 or 14:30 UTC
+    double regularEnd = isDST ? 20.0 : 21.0;    // 20:00 or 21:00 UTC
+    double preStart = 9.0;                      // 09:00 UTC (Fixed)
     // afterEnd is 0.0 (Midnight) or 1.0 (1 AM)
     double afterEnd = isDST ? 0.0 : 1.0;
 
@@ -68,42 +72,49 @@ bool Engine<depth, numberOfSymbols, Distribution>::canTrade(TimeStamp currentTim
     return false;
 }
 
-template<std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
-Result<numberOfSymbols, Distribution> Engine<depth, numberOfSymbols, Distribution>::run(IStrategy<depth, numberOfSymbols, Distribution>& strategy, std::ostream& out) {
-    strategy = &strategy;
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
+Result<numberOfSymbols, Distribution> Engine<depth, numberOfSymbols, Distribution>::run(
+    IStrategy<depth, numberOfSymbols, Distribution>& strategy,
+    std::ostream& out) {
+    this->strategy = &strategy;
     strategy.setEngine(this);
     Result<numberOfSymbols, Distribution> result = simulate(strategy);
-    statistics().outputSummary(out, verbosityLevel);
+    statistics.outputSummary(out, verbosityLevel);
     return result;
 }
 
-template<std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
 bool Engine<depth, numberOfSymbols, Distribution>::sufficientEquityForOrder(const NewOrder& order) {
     assert(order.orderType == OrderType::Limit || order.orderType == OrderType::Market);
 
-    return portfolio.sufficientEquityForOrder(
-        order,
-        marketData->bestBids(),
-        marketData->bestAsks,
-        this->estimateTotalOrderPrice(order),
-        leverageFactor
-    );
+    return portfolio.sufficientEquityForOrder(marketData->bestBids(), marketData->bestAsks(),
+        order, this->estimateTotalOrderPrice(order), leverageFactor);
 }
 
-template<std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
 Ticks Engine<depth, numberOfSymbols, Distribution>::estimateTotalOrderPrice(NewOrder order) {
     assert(order.orderType == OrderType::Limit || order.orderType == OrderType::Market);
 
-    Ticks totalOrderPrice = 0;
+    Ticks totalOrderPrice{0};
     if (order.orderType == OrderType::Limit) {
-        return order.quantity * order.price;
+        // For limit orders, use current market price (not limit price) for equity estimation
+        // because the order will execute at market price, not at the limit price
+        if (order.instruction == OrderInstruction::Buy) {
+            // Use best ask price (what we'll actually pay)
+            Ticks bestAsk = marketData->bestAsk(order.symbol);
+            return order.quantity * bestAsk;
+        } else {  // Sell
+            // Use best bid price (what we'll actually receive)
+            Ticks bestBid = marketData->bestBid(order.symbol);
+            return order.quantity * bestBid;
+        }
     } else if (order.orderType == OrderType::Market) {
         if (order.instruction == OrderInstruction::Buy) {
-            Ticks totalOrderPrice = 0;
+            Ticks totalOrderPrice{0};
             Quantity numberOfSharesRemaining = order.quantity;
 
             for (std::size_t level = 0; level < depth; ++level) {
-                Ticks askSize = marketData->askSize(order.symbol, level);
+                Ticks askSize = marketData->getAskSize(order.symbol, level);
 
                 if (askSize <= numberOfSharesRemaining.value()) {
                     numberOfSharesRemaining -= askSize.value();
@@ -113,11 +124,11 @@ Ticks Engine<depth, numberOfSymbols, Distribution>::estimateTotalOrderPrice(NewO
                 }
             }
         } else if (order.instruction == OrderInstruction::Sell) {
-            Ticks totalOrderPrice = 0;
+            Ticks totalOrderPrice{0};
             Quantity numberOfSharesRemaining = order.quantity;
 
             for (std::size_t level = 0; level < depth; ++level) {
-                Ticks bidSize = marketData->bidSize(order.symbol, level);
+                Ticks bidSize = marketData->getBidSize(order.symbol, level);
 
                 if (bidSize <= numberOfSharesRemaining.value()) {
                     numberOfSharesRemaining -= bidSize.value();
@@ -131,14 +142,13 @@ Ticks Engine<depth, numberOfSymbols, Distribution>::estimateTotalOrderPrice(NewO
     return totalOrderPrice;
 }
 
-template<std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
 OrderId Engine<depth, numberOfSymbols, Distribution>::placeOrder(std::uint16_t symbolId,
     OrderInstruction instruction,
     OrderType orderType,
     Quantity quantity,
     TimeInForce timeInForce,
-    Ticks price
-) {
+    Ticks price) {
     NewOrder order;
     order.id = ++nextOrderId;
     order.symbol = symbolId;
@@ -148,20 +158,16 @@ OrderId Engine<depth, numberOfSymbols, Distribution>::placeOrder(std::uint16_t s
     order.timeInForce = timeInForce;
     order.price = price;
 
-    sufficientEquityForOrder = portfolio.sufficientEquityForOrder(
-        marketData->bestBids(),
-        marketData->bestAsks(),
-        order,
-        estimateTotalOrderPrice(order),
-        leverageFactor
-    );
+    Ticks estimatedPrice = estimateTotalOrderPrice(order);
+    bool sufficientEquityForOrder = portfolio.sufficientEquityForOrder(marketData->bestBids(),
+        marketData->bestAsks(), order, estimatedPrice, leverageFactor);
 
     if (!sufficientEquityForOrder) {
         std::cout << "Conditions not met to place order!";
         return OrderId{0};
     }
 
-    TimeStamp sendTime = marketData.currentTimeStamp();
+    TimeStamp sendTime = marketData->currentTimeStamp();
     TimeStamp earliestExecution = TimeStamp(sendTime.value() + totalLatencyNs);
 
     PendingOrder pendingOrder;
@@ -171,12 +177,12 @@ OrderId Engine<depth, numberOfSymbols, Distribution>::placeOrder(std::uint16_t s
 
     pendingOrders.push_back(pendingOrder);
 
-    statistics().recordOrder(order, sendTime);
+    statistics.recordOrder(order, sendTime);
 
     return order.id;
 }
 
-template<std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
 bool Engine<depth, numberOfSymbols, Distribution>::cancel(OrderId orderId) {
     // Check if order exists in pending orders
     auto it = std::find_if(pendingOrders.begin(), pendingOrders.end(),
@@ -198,15 +204,17 @@ bool Engine<depth, numberOfSymbols, Distribution>::cancel(OrderId orderId) {
     return false;
 }
 
-template<std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
-bool Engine<depth, numberOfSymbols, Distribution>::replace(OrderId orderId, Quantity newQuantity, Ticks newPrice) {
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
+bool Engine<depth, numberOfSymbols, Distribution>::replace(OrderId orderId,
+    Quantity newQuantity,
+    Ticks newPrice) {
     // Check if order exists in pending orders
     auto it = std::find_if(pendingOrders.begin(), pendingOrders.end(),
         [orderId](const PendingOrder& po) { return po.order.id == orderId; });
 
     if (it != pendingOrders.end()) {
         // Add replace order with latency
-        TimeStamp sendTime = marketData->currentTimeStamp;
+        TimeStamp sendTime = marketData->currentTimeStamp();
         TimeStamp earliestExecution = TimeStamp(sendTime.value() + totalLatencyNs);
 
         ReplaceOrder replaceOrder;
@@ -222,9 +230,10 @@ bool Engine<depth, numberOfSymbols, Distribution>::replace(OrderId orderId, Quan
     return false;
 }
 
-template<std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
-Result<numberOfSymbols, Distribution> Engine<depth, numberOfSymbols, Distribution>::simulate(IStrategy<depth, numberOfSymbols, Distribution>& strategy) {
-    strategy = &strategy;
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
+Result<numberOfSymbols, Distribution> Engine<depth, numberOfSymbols, Distribution>::simulate(
+    IStrategy<depth, numberOfSymbols, Distribution>& strategy) {
+    this->strategy = &strategy;
 
     // Process market data
     while (marketData->nextMarketState()) {
@@ -255,49 +264,47 @@ Result<numberOfSymbols, Distribution> Engine<depth, numberOfSymbols, Distributio
     return Result{std::move(fills), portfolio, quotesProcessed};
 }
 
-template<std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
-double Engine<depth, numberOfSymbols, Distribution>::determineFillRate(std::mt19937& rng, OrderInstruction orderInstruction) {
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
+double Engine<depth, numberOfSymbols, Distribution>::determineFillRate(std::mt19937& rng,
+    OrderInstruction orderInstruction) {
     // Get a value between 1 and 100 from the distribution and convert it to an integer
     switch (orderInstruction) {
-        case OrderInstruction::Buy:
-        {
-            return std::clamp(buyFillRateDistribution(randomNumberGenerator), 0, 100);
-            break;
+        case OrderInstruction::Buy: {
+            return std::clamp(buyFillRateDistribution(randomNumberGenerator), 0.0, 100.0);
         }
-        case OrderInstruction::Sell:
-        {
-            return std::clamp(sellFillRateDistribution(randomNumberGenerator), 0, 100);
-            break;
+        case OrderInstruction::Sell: {
+            return std::clamp(sellFillRateDistribution(randomNumberGenerator), 0.0, 100.0);
         }
     }
+    return 0.0;  // Should never reach here
 }
 
-template<std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
 Quantity Engine<depth, numberOfSymbols, Distribution>::numberOfSharesToFillForLimitOrder(
     const Quote<depth>& quote,
     OrderInstruction orderInstruction,
     Ticks price,
-    Quantity desiredNumberOfShares
-) {
+    Quantity desiredNumberOfShares) {
     int numberOfSharesAvailable = 0;
 
     switch (orderInstruction) {
-        case OrderInstruction::Buy:
-        {
-            for (std::size_t level = 0; level < depth && numberOfSharesAvailable < desiredNumberOfShares; ++level) {
-                if (quote.getAsk(level) <= price) {
-                    numberOfSharesAvailable += quote.getAskSize(level);
+        case OrderInstruction::Buy: {
+            for (std::size_t level = 0;
+                level < depth && numberOfSharesAvailable < desiredNumberOfShares; ++level) {
+                Ticks askPrice = quote.getAsk(level);
+                if (askPrice <= price) {
+                    numberOfSharesAvailable += static_cast<int>(quote.getAskSize(level).value());
                 } else {
                     break;
                 }
             }
             break;
         }
-        case OrderInstruction::Sell:
-        {
-            for (std::size_t level = 0; level < depth && numberOfSharesAvailable < desiredNumberOfShares; ++level) {
+        case OrderInstruction::Sell: {
+            for (std::size_t level = 0;
+                level < depth && numberOfSharesAvailable < desiredNumberOfShares; ++level) {
                 if (quote.getBid(level) >= price) {
-                    numberOfSharesAvailable += quote.getBidSize(level);
+                    numberOfSharesAvailable += static_cast<int>(quote.getBidSize(level).value());
                 } else {
                     break;
                 }
@@ -306,100 +313,106 @@ Quantity Engine<depth, numberOfSymbols, Distribution>::numberOfSharesToFillForLi
         }
     }
 
-    double fillRate = determineFillRate(orderInstruction);
+    double fillRate = determineFillRate(randomNumberGenerator, orderInstruction);
 
-    return Quantity{
-        static_cast<int>(
-            std::min(numberOfSharesAvailable, static_cast<int>(desiredNumberOfShares.value())) * fillRate / 100
-        )
-    };
+    int minShares = std::min(numberOfSharesAvailable, static_cast<int>(desiredNumberOfShares.value()));
+    int sharesToFill = static_cast<int>(std::round(minShares * fillRate / 100.0));
+    return Quantity{static_cast<std::uint32_t>(std::max(0, sharesToFill))};
 }
 
-template<std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
 Quantity Engine<depth, numberOfSymbols, Distribution>::numberOfSharesToFillForMarketOrder(
     const Quote<depth>& quote,
     OrderInstruction orderInstruction,
-    Quantity desiredNumberOfShares
-) {
+    Quantity desiredNumberOfShares) {
     int numberOfSharesAvailable = 0;
 
     switch (orderInstruction) {
-        case OrderInstruction::Buy:
-        {
-            for (std::size_t level = 0; level < depth && numberOfSharesAvailable < desiredNumberOfShares; ++level) {
-                numberOfSharesAvailable += quote.getAskSize(level);
+        case OrderInstruction::Buy: {
+            for (std::size_t level = 0;
+                level < depth && numberOfSharesAvailable < desiredNumberOfShares; ++level) {
+                numberOfSharesAvailable += static_cast<int>(quote.getAskSize(level).value());
             }
             break;
         }
-        case OrderInstruction::Sell:
-        {
-            for (std::size_t level = 0; level < depth && numberOfSharesAvailable < desiredNumberOfShares; ++level) {
-                numberOfSharesAvailable += quote.getBidSize(level);
+        case OrderInstruction::Sell: {
+            for (std::size_t level = 0;
+                level < depth && numberOfSharesAvailable < desiredNumberOfShares; ++level) {
+                numberOfSharesAvailable += static_cast<int>(quote.getBidSize(level).value());
             }
             break;
         }
     }
 
-    double fillRate = determineFillRate(orderInstruction);
+    double fillRate = determineFillRate(randomNumberGenerator, orderInstruction);
 
-    return Quantity{
-        static_cast<int>(
-            std::min(numberOfSharesAvailable, static_cast<int>(desiredNumberOfShares.value())) * fillRate / 100
-        )
-    };
+    int minShares = std::min(numberOfSharesAvailable, static_cast<int>(desiredNumberOfShares.value()));
+    int sharesToFill = static_cast<int>(std::round(minShares * fillRate / 100.0));
+    return Quantity{static_cast<std::uint32_t>(std::max(0, sharesToFill))};
 }
 
-template<std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
-Ticks Engine<depth, numberOfSymbols, Distribution>::averageExecutionPrice(
-    const Quote<depth>& quote,
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
+Ticks Engine<depth, numberOfSymbols, Distribution>::averageExecutionPrice(const Quote<depth>& quote,
     Quantity numberOfShares,
-    OrderInstruction orderInstruction
-) {
-    Ticks totalPrice = 0;
+    OrderInstruction orderInstruction) {
+    Ticks totalPrice{0};
+    Quantity totalShares{0};
     switch (orderInstruction) {
-        case OrderInstruction::Buy:
-        {
-            for (std::size_t level = 0; level < depth; ++level) {
-                totalPrice += quote.getAsk(level) * quote.getAskSize(level);
+        case OrderInstruction::Buy: {
+            for (std::size_t level = 0; level < depth && totalShares < numberOfShares; ++level) {
+                Ticks askPrice = quote.getAsk(level);
+                Ticks askSize = quote.getAskSize(level);
+                Quantity sharesAtLevel = Quantity{static_cast<std::uint32_t>(askSize.value())};
+                Quantity sharesToUse = (totalShares + sharesAtLevel <= numberOfShares) 
+                    ? sharesAtLevel 
+                    : Quantity{numberOfShares.value() - totalShares.value()};
+                totalPrice += askPrice * sharesToUse;
+                totalShares += sharesToUse;
             }
             break;
         }
-        case OrderInstruction::Sell:
-        {
-            for (std::size_t level = 0; level < depth; ++level) {
-                totalPrice += quote.getBid(level) * quote.getBidSize(level);
+        case OrderInstruction::Sell: {
+            for (std::size_t level = 0; level < depth && totalShares < numberOfShares; ++level) {
+                Ticks bidPrice = quote.getBid(level);
+                Ticks bidSize = quote.getBidSize(level);
+                Quantity sharesAtLevel = Quantity{static_cast<std::uint32_t>(bidSize.value())};
+                Quantity sharesToUse = (totalShares + sharesAtLevel <= numberOfShares) 
+                    ? sharesAtLevel 
+                    : Quantity{numberOfShares.value() - totalShares.value()};
+                totalPrice += bidPrice * sharesToUse;
+                totalShares += sharesToUse;
             }
             break;
         }
     }
 
-    return totalPrice / numberOfShares;
+    if (totalShares.value() > 0) {
+        return totalPrice / totalShares;
+    }
+    return Ticks{0};
 }
 
-template<std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
-ExecutionResult Engine<depth, numberOfSymbols, Distribution>::tryExecute(
-    const NewOrder& newOrder,
-    TimeStamp sendTs
-) {
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
+ExecutionResult Engine<depth, numberOfSymbols, Distribution>::tryExecute(const NewOrder& newOrder,
+    TimeStamp sendTs) {
     Quantity numberOfSharesToFill;
     const Quote<depth> quote = marketData->currentMarketState().getQuote(newOrder.symbol);
 
     switch (newOrder.orderType) {
-        case OrderType::Market:
-        {
-            numberOfSharesToFill = numberOfSharesToFillForMarketOrder(quote, newOrder.instruction, newOrder.quantity);
+        case OrderType::Market: {
+            numberOfSharesToFill =
+                numberOfSharesToFillForMarketOrder(quote, newOrder.instruction, newOrder.quantity);
+            break;
         }
-        case OrderType::Limit:
-        {
-            numberOfSharesToFill = numberOfSharesToFillForLimitOrder(quote, newOrder.instruction, newOrder.price, newOrder.quantity);
+        case OrderType::Limit: {
+            numberOfSharesToFill = numberOfSharesToFillForLimitOrder(
+                quote, newOrder.instruction, newOrder.price, newOrder.quantity);
+            break;
         }
     }
 
-    Ticks averageExecutionPrice = averageExecutionPrice(
-        marketData->getQuote(newOrder.symbol),
-        newOrder.quantity, 
-        newOrder.instruction
-    );
+    Ticks avgExecPrice = this->averageExecutionPrice(
+        marketData->getQuote(newOrder.symbol), newOrder.quantity, newOrder.instruction);
 
     ExecutionResult result;
     result.fills.clear();
@@ -410,7 +423,7 @@ ExecutionResult Engine<depth, numberOfSymbols, Distribution>::tryExecute(
     fill.id = newOrder.id;
     fill.symbol = newOrder.symbol;
     fill.quantity = numberOfSharesToFill;
-    fill.price = averageExecutionPrice;
+    fill.price = avgExecPrice;
     fill.timestamp = marketData->currentTimeStamp();
     fill.instruction = newOrder.instruction;
     fill.orderType = newOrder.orderType;
@@ -427,12 +440,13 @@ ExecutionResult Engine<depth, numberOfSymbols, Distribution>::tryExecute(
     result.fills.push_back(fill);
     result.isComplete = (remainingSharesUnfilled == 0);
 
-    Ticks portfolioLiquidationValue = portfolio.netLiquidationValue(marketData->bestBids(), marketData->bestAsks());
+    Ticks portfolioLiquidationValue =
+        portfolio.netLiquidationValue(marketData->bestBids(), marketData->bestAsks());
 
     portfolio.updatePortfolio(fill);
     statistics.recordFill(fill);
     statistics.updateStatistics(portfolioLiquidationValue);
-    statistics.updateInterestOwed(portfolio().interestOwed);
+    statistics.updateInterestOwed(portfolio.interestOwed);
 
     TimeStamp notificationTime = TimeStamp{fill.timestamp.value() + receiveLatencyNs};
     notifyFill(fill, notificationTime);
@@ -440,8 +454,9 @@ ExecutionResult Engine<depth, numberOfSymbols, Distribution>::tryExecute(
     return result;
 }
 
-template<std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
-void Engine<depth, numberOfSymbols, Distribution>::notifyFill(const Fill& fill, TimeStamp earliestNotificationTime) {
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
+void Engine<depth, numberOfSymbols, Distribution>::notifyFill(const Fill& fill,
+    TimeStamp earliestNotificationTime) {
     // Add fill to results immediately
     fills.push_back(fill);
 
@@ -449,11 +464,12 @@ void Engine<depth, numberOfSymbols, Distribution>::notifyFill(const Fill& fill, 
     pendingNotifications.push_back({fill, earliestNotificationTime, false});
 }
 
-template<std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
-void Engine<depth, numberOfSymbols, Distribution>::processPendingNotifications(IStrategy<depth, numberOfSymbols, Distribution>& strategy) {
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
+void Engine<depth, numberOfSymbols, Distribution>::processPendingNotifications(
+    IStrategy<depth, numberOfSymbols, Distribution>& strategy) {
     auto it = pendingNotifications.begin();
     while (it != pendingNotifications.end()) {
-        if (!it->delivered && marketData->timestamp >= it->earliestNotifyTime) {
+        if (!it->delivered && marketData->currentTimeStamp() >= it->earliestNotifyTime) {
             // Time to deliver the notification
             strategy.onFill(it->fill);
             it->delivered = true;
@@ -470,12 +486,12 @@ void Engine<depth, numberOfSymbols, Distribution>::processPendingNotifications(I
         pendingNotifications.end());
 }
 
-template<std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
 void Engine<depth, numberOfSymbols, Distribution>::processPendingCancelOrders() {
     // Process pending cancel orders first
     auto cancelIt = pendingCancels.begin();
     while (cancelIt != pendingCancels.end()) {
-        if (marketData->timestamp >= cancelIt->earliestExecution) {
+        if (marketData->currentTimeStamp() >= cancelIt->earliestExecution) {
             // Time to execute the cancel - remove the corresponding order
             auto orderIt = std::find_if(pendingOrders.begin(), pendingOrders.end(),
                 [cancelIt](const PendingOrder& po) { return po.order.id == cancelIt->orderId; });
@@ -492,12 +508,12 @@ void Engine<depth, numberOfSymbols, Distribution>::processPendingCancelOrders() 
     }
 }
 
-template<std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
 void Engine<depth, numberOfSymbols, Distribution>::processPendingReplaceOrders() {
     // Process pending replace orders
     auto replaceIt = pendingReplaces.begin();
     while (replaceIt != pendingReplaces.end()) {
-        if (marketData->timestamp >= replaceIt->earliestExecution) {
+        if (marketData->currentTimeStamp() >= replaceIt->earliestExecution) {
             // Time to execute the replace - modify the corresponding order
             auto orderIt = std::find_if(pendingOrders.begin(), pendingOrders.end(),
                 [replaceIt](const PendingOrder& po) { return po.order.id == replaceIt->orderId; });
@@ -515,17 +531,16 @@ void Engine<depth, numberOfSymbols, Distribution>::processPendingReplaceOrders()
     }
 }
 
-template<std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
 void Engine<depth, numberOfSymbols, Distribution>::processPendingBuySellOrders() {
     // Process pending orders
     auto pendingIt = pendingOrders.begin();
     while (pendingIt != pendingOrders.end()) {
-        if (marketData->timestamp >= pendingIt->earliestExecution) {
-
+        if (marketData->currentTimeStamp() >= pendingIt->earliestExecution) {
             // Only try to execute if we are within trading hours
-            if (!canTrade(marketData.currentTimeStamp())) {
-                ++pendingIt; 
-                continue; // Order stays in pendingOrders for the next quote
+            if (!canTrade(marketData->currentTimeStamp())) {
+                ++pendingIt;
+                continue;  // Order stays in pendingOrders for the next quote
             }
 
             ExecutionResult result = tryExecute(pendingIt->order, pendingIt->sendTime);
@@ -543,29 +558,31 @@ void Engine<depth, numberOfSymbols, Distribution>::processPendingBuySellOrders()
     }
 }
 
-template<std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
 void Engine<depth, numberOfSymbols, Distribution>::processPendingOrders() {
     processPendingCancelOrders();
     processPendingCancelOrders();
     processPendingBuySellOrders();
 }
 
-template<std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
 void Engine<depth, numberOfSymbols, Distribution>::processSettlements() {
     // Only process settlements once per day after 9am
-    if (isTimeForSettlement(marketData->timestamp)) {
+    TimeStamp currentTime = marketData->currentTimeStamp();
+    if (isTimeForSettlement(currentTime)) {
         // Process unsettled funds settlements
-        portfolio.processSettlements(marketData->timestamp);
+        portfolio.processSettlements(currentTime);
 
         // Calculate and apply daily interest on outstanding loans
-        portfolio.calculateDailyInterest(marketData->timestamp);
+        portfolio.calculateDailyInterest(currentTime);
 
-        lastSettlementDate = marketData->timestamp;
+        lastSettlementDate = currentTime;
     }
 }
 
-template<std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
-bool Engine<depth, numberOfSymbols, Distribution>::isTimeForSettlement(TimeStamp currentTime) const {
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
+bool Engine<depth, numberOfSymbols, Distribution>::isTimeForSettlement(
+    TimeStamp currentTime) const {
     // Convert timestamp to days since epoch (assuming nanoseconds since epoch)
     constexpr std::uint64_t nanosecondsPerDay = 24ULL * 60 * 60 * 1000000000ULL;
     constexpr std::uint64_t nanosecondsPerHour = 60ULL * 60 * 1000000000ULL;
@@ -584,43 +601,33 @@ bool Engine<depth, numberOfSymbols, Distribution>::isTimeForSettlement(TimeStamp
     return false;
 }
 
-template<std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
 void Engine<depth, numberOfSymbols, Distribution>::checkMarginRequirement() {
-    bool inViolationOfMarginRequirement = portfolio.violatesMarginRequirement(
-        marketData->bestBids(),
-        marketData->bestAsks()
-    );
+    bool inViolationOfMarginRequirement =
+        portfolio.violatesMarginRequirement(marketData->bestBids(), marketData->bestAsks());
 
     if (inViolationOfMarginRequirement) {
         executeMarginCall();
     }
 }
 
-template<std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
+template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
 void Engine<depth, numberOfSymbols, Distribution>::executeMarginCall() {
-    Ticks bestBids = marketData->currentMarketState().bestBids();
-    Ticks bestAsks = marketData->currentMarketState().bestAsks();
+    auto bestBids = marketData->bestBids();
+    auto bestAsks = marketData->bestAsks();
 
     // Liquidate positions until we meet 30% maintenance requirement
     while (true) {
-        bool inViolationOfMarginRequirement = portfolio.violatesMarginRequirement(
-            marketData->bestBids(),
-            marketData->bestAsks()
-        );
-        if (inViolationOfMarginRequirement) {
-            executeMarginCall();
-        }
-
         // Determine what to liquidate first - start with largest positions
         bool liquidated = false;
 
         // Liquidate long positions first (sell at bid)
-        if (portfolio.longQuantity[0] > Quantity{0}) { // liquidate the the symbol with id 0
+        if (portfolio.longQuantity[0] > Quantity{0}) {  // liquidate the the symbol with id 0
             Quantity liquidateQuantity =
                 std::min(portfolio.longQuantity[0], Quantity{100});  // Liquidate in chunks
 
             Fill marginCallFill;
-            marginCallFill.id = OrderId{0};       // Special ID for margin calls
+            marginCallFill.id = OrderId{0};            // Special ID for margin calls
             marginCallFill.symbol = std::uint16_t{0};  // Liquitdate the symbols with id 0
             marginCallFill.quantity = liquidateQuantity;
             marginCallFill.price = marketData->bestBid(0);
@@ -643,15 +650,15 @@ void Engine<depth, numberOfSymbols, Distribution>::executeMarginCall() {
         }
         // Liquidate short positions (buy to cover at ask)
         else if (portfolio.shortQuantity[0] > Quantity{0}) {
-            Quantity liquidateQuantity =
-                std::min(portfolio.shortQuantity[0], Quantity{100});  // Liquidate in chunks, liquidate the symbol with id 0
+            Quantity liquidateQuantity = std::min(portfolio.shortQuantity[0],
+                Quantity{100});  // Liquidate in chunks, liquidate the symbol with id 0
 
             Fill marginCallFill;
-            marginCallFill.id = OrderId{0};       // Special ID for margin calls
+            marginCallFill.id = OrderId{0};            // Special ID for margin calls
             marginCallFill.symbol = std::uint16_t{0};  // Assume single symbol for now
             marginCallFill.quantity = liquidateQuantity;
             marginCallFill.price = marketData->bestAsk(0);
-            marginCallFill.timestamp = marketData->timestamp;
+            marginCallFill.timestamp = marketData->currentTimeStamp();
             marginCallFill.instruction = OrderInstruction::Buy;  // Buy to cover short
             marginCallFill.orderType = OrderType::Market;
             marginCallFill.timeInForce = TimeInForce::Day;
@@ -676,9 +683,8 @@ void Engine<depth, numberOfSymbols, Distribution>::executeMarginCall() {
     }
 }
 
-// Explicit template instantiations for common depths
-// TODO:
-//template class Engine<10, 1>;
-//template class Engine<10, 4>;
+// Explicit template instantiations
+template class Engine<10, 1, ConstantDistribution>;
+template class Engine<10, 4, ConstantDistribution>;
 
 }  // namespace sim

@@ -1,6 +1,7 @@
 // portfolio.cppm
 export module simulation_engine:portfolio;
 
+import :probability_distributions;
 import :order_placement;
 import :types;
 import :run_params;
@@ -10,21 +11,21 @@ import std;
 export namespace sim {
 
 /**
-* @brief Portfolio tracking structure
-* @details
-* Tracks the current state of a trading portfolio including cash, position quantity,
-* and cost basis. Provides methods to update the portfolio with fills and calculate
-* current portfolio value.
-*
-* The portfolio maintains:
-* - Cash: Available cash for trading
-* - LongQuantity: Current long position size (positive = long, negative = short)
-* - Cost Basis: Weighted average price of the current position
-*
-* Tracks the average price and quantity for the symbol,
-* allowing for accurate P&L calculations and risk management.
-*/
-template<std::uint16_t numberOfSymbols, typename Distribution>
+ * @brief Portfolio tracking structure
+ * @details
+ * Tracks the current state of a trading portfolio including cash, position quantity,
+ * and cost basis. Provides methods to update the portfolio with fills and calculate
+ * current portfolio value.
+ *
+ * The portfolio maintains:
+ * - Cash: Available cash for trading
+ * - LongQuantity: Current long position size (positive = long, negative = short)
+ * - Cost Basis: Weighted average price of the current position
+ *
+ * Tracks the average price and quantity for the symbol,
+ * allowing for accurate P&L calculations and risk management.
+ */
+template <std::uint16_t numberOfSymbols, typename Distribution>
 class Portfolio {
    public:
     Portfolio(RunParams<Distribution> runParams) {
@@ -37,18 +38,18 @@ class Portfolio {
     Ticks settledFunds{0};
 
     // The nth entry represents the value for the symbol with id n.
-    std::array<Quantity, numberOfSymbols> longQuantity{0};
-    std::array<Quantity, numberOfSymbols> shortQuantity{0};
+    std::array<Quantity, numberOfSymbols> longQuantity{Quantity{0}};
+    std::array<Quantity, numberOfSymbols> shortQuantity{Quantity{0}};
 
-    std::array<Ticks, numberOfSymbols> costBasis{0}; // 
+    std::array<Ticks, numberOfSymbols> costBasis{Ticks{0}};  //
     Ticks loan{0};
     Ticks interestOwed{0};
     Percentage interestRate{0};
     std::vector<UnsettledFunds> pendingFunds_;
 
-/**
+    /**
      * @brief Update the portfolio state following a trade execution (fill).
-     * @details Updates quantities, adjusts cash balances, calculates new cost bases, 
+     * @details Updates quantities, adjusts cash balances, calculates new cost bases,
      * and manages margin loan increases or repayments based on the trade direction.
      * @param fill The execution report containing symbol, side, quantity, and price.
      */
@@ -64,7 +65,8 @@ class Portfolio {
 
     /**
      * @brief Calculate the portion of a purchase that must be covered by margin.
-     * @details Specifically checks the shortfall relative to 'settled' funds rather than total cash.
+     * @details Specifically checks the shortfall relative to 'settled' funds rather than total
+     * cash.
      * @param purchaseAmount The total cost of the position to be opened.
      * @return The specific amount of the purchase that will be classified as a margin debt.
      */
@@ -80,7 +82,7 @@ class Portfolio {
 
     /**
      * @brief Evaluate if the account has enough buying power to execute a purchase.
-     * @details Checks if total cash (settled + unsettled) plus available margin capacity 
+     * @details Checks if total cash (settled + unsettled) plus available margin capacity
      * is greater than or equal to the purchase cost.
      * @param purchaseAmount The total notional cost of the buy order.
      * @return True if the account can technically fund the transaction.
@@ -110,7 +112,8 @@ class Portfolio {
 
     /**
      * @brief Schedule a cash credit to be available after the standard settlement delay.
-     * @details Typically called after a Sell order to simulate the delay in receiving cash from the exchange.
+     * @details Typically called after a Sell order to simulate the delay in receiving cash from the
+     * exchange.
      * @param amount The amount of cash to be credited upon settlement.
      * @param currentTime The current simulation time used to calculate the future settlement date.
      */
@@ -146,7 +149,8 @@ class Portfolio {
      * @param bestAsks Current best ask prices.
      * @return Total market footprint used for leverage and risk limit calculations.
      */
-    Ticks grossMarketValue(const std::array<Ticks, numberOfSymbols>& bestBids, const std::array<Ticks, numberOfSymbols>& bestAsks) const;
+    Ticks grossMarketValue(const std::array<Ticks, numberOfSymbols>& bestBids,
+        const std::array<Ticks, numberOfSymbols>& bestAsks) const;
 
     /**
      * @brief Calculate the net directional exposure of the portfolio.
@@ -155,17 +159,19 @@ class Portfolio {
      * @param bestAsks Current best ask prices.
      * @return The directional bias (Positive = Net Long, Negative = Net Short).
      */
-    Ticks netMarketValue(const std::array<Ticks, numberOfSymbols>& bestBids, const std::array<Ticks, numberOfSymbols>& bestAsks) const;
+    Ticks netMarketValue(const std::array<Ticks, numberOfSymbols>& bestBids,
+        const std::array<Ticks, numberOfSymbols>& bestAsks) const;
 
     /**
      * @brief Calculate the "True Value" or Net Worth of the account.
-     * @details Often called Net Liquidation Value (NLV). 
+     * @details Often called Net Liquidation Value (NLV).
      * Formula: Cash + Net Market Value - Margin Loan - Interest Owed.
      * @param bestBids Current best bid prices.
      * @param bestAsks Current best ask prices.
      * @return Total equity available if all positions were closed immediately.
      */
-    Ticks netLiquidationValue(const std::array<Ticks, numberOfSymbols>& bestBids, const std::array<Ticks, numberOfSymbols>& bestAsks) const;
+    Ticks netLiquidationValue(const std::array<Ticks, numberOfSymbols>& bestBids,
+        const std::array<Ticks, numberOfSymbols>& bestAsks) const;
 
     /**
      * @brief Calculate the minimum equity required by the broker to keep positions open.
@@ -173,30 +179,30 @@ class Portfolio {
      * @param prices Current market prices for the symbols held.
      * @return The minimum Net Liquidation Value required to avoid a margin call.
      */
-    Ticks maintenanceRequirement(const std::array<Ticks, numberOfSymbols>& bestBids, const std::array<Ticks, numberOfSymbols>& bestAsks) const;
+    Ticks maintenanceRequirement(const std::array<Ticks, numberOfSymbols>& bestBids,
+        const std::array<Ticks, numberOfSymbols>& bestAsks) const;
 
     /**
      */
-    bool violatesMarginRequirement(const std::array<Ticks, numberOfSymbols>& bestBids, const std::array<Ticks, numberOfSymbols>& bestAsks) const;
+    bool violatesMarginRequirement(const std::array<Ticks, numberOfSymbols>& bestBids,
+        const std::array<Ticks, numberOfSymbols>& bestAsks) const;
 
     /**
      * @brief Validate if an order can be placed without violating margin or leverage limits.
 
      */
-    bool sufficientEquityForOrder(
-        const std::array<Ticks, numberOfSymbols>& bestBids,
+    bool sufficientEquityForOrder(const std::array<Ticks, numberOfSymbols>& bestBids,
         const std::array<Ticks, numberOfSymbols>& bestAsks,
         const NewOrder& order,
         Ticks totalOrderPrice,
-        double leverageFactor
-    ) const;
+        double leverageFactor) const;
 
    private:
     /**
-    * @brief Update cost basis with weighted average calculation
-    * @param fillPrice Price of the new fill
-    * @param fillQuantity Quantity of the new fill
-    */
+     * @brief Update cost basis with weighted average calculation
+     * @param fillPrice Price of the new fill
+     * @param fillQuantity Quantity of the new fill
+     */
     void updateCostBasis(std::uint16_t symbolId, Ticks fillPrice, Quantity fillQuantity);
 };
 

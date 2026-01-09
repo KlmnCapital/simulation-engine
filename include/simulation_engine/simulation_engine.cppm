@@ -1,6 +1,8 @@
 // simulation_engine.cppm
 export module simulation_engine;
 
+export import :template_instantiations;
+export import :probability_distributions;
 export import :engine;
 export import :market_state;
 export import :market_data;

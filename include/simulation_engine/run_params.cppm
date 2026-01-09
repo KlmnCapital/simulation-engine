@@ -7,12 +7,12 @@ import std;
 export namespace sim {
 
 /**
-* @brief Configuration parameters for simulation runs
-* @details Contains all configurable parameters for simulation execution including
-* time ranges, capital limits, execution parameters, and strategy configuration.
-* These parameters control the behavior of the simulation engine and risk management.
-*/
-template<typename Distribution>
+ * @brief Configuration parameters for simulation runs
+ * @details Contains all configurable parameters for simulation execution including
+ * time ranges, capital limits, execution parameters, and strategy configuration.
+ * These parameters control the behavior of the simulation engine and risk management.
+ */
+template <typename Distribution>
 struct RunParams {
     // Symbols, depth, and starting cash
     Depth depth{kDefaultDepth};
@@ -47,7 +47,7 @@ struct RunParams {
     VerbosityLevel verbosityLevel;
 
     // Statistics settings
-    int statisticsUpateRateSeconds;
+    int statisticsUpdateRateSeconds;
 };
 
 }  // namespace sim

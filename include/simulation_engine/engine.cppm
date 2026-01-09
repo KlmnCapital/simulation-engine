@@ -3,6 +3,7 @@ export module simulation_engine:engine;
 
 import std;
 
+import :probability_distributions;
 import :market_data;
 import :order_placement;
 import :portfolio;
@@ -30,6 +31,8 @@ struct ExecutionResult {
 template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
 class Engine final {
    public:
+    template <std::size_t D, std::uint16_t N, typename Dist>
+    friend class IStrategy;
     /**
      * @brief Construct a new Engine object.
      * @details Initializes the simulation environment with market data providers and execution
@@ -109,10 +112,10 @@ class Engine final {
     Portfolio<numberOfSymbols, Distribution> portfolio;
     Distribution buyFillRateDistribution;
     Distribution sellFillRateDistribution;
-    std::mt19937& randomNumberGenerator;
+    std::mt19937 randomNumberGenerator;
     Statistics<depth, Distribution> statistics;
     VerbosityLevel verbosityLevel;
-    int statisticsUpateRateSeconds;
+    int statisticsUpdateRateSeconds;
     std::uint8_t leverageFactor;
     std::vector<PendingOrder> pendingOrders;
     std::vector<CancelOrder> pendingCancels;

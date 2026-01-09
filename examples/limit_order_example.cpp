@@ -1,35 +1,33 @@
 import std;
 import simulation_engine;
 
-using namespace sim;
+namespace sim {
 
-class LimitOrderExampleStrategy : public IStrategy<10, 1, ConstantFillDistribution> {
+class LimitOrderExampleStrategy : public IStrategy<10, 1, ConstantDistribution> {
    public:
-    LimitOrderExampleStrategy()
-        : IStrategy<10, 1, ConstantFillDistribution>(Portfolio<1, ConstantFillDistribution>{}),
-          quotesProcessed_(0),
-          ordersPlaced_(0) {}
+    LimitOrderExampleStrategy(const RunParams<ConstantDistribution>& params)
+        : IStrategy<10, 1, ConstantDistribution>(Portfolio<1, ConstantDistribution>{params}),
+          quotesProcessed_{0} {}
 
     void onMarketData(const MarketState<10, 1>& marketState) override {
         if (quotesProcessed_ == 0) {
-            Ticks limitPrice{261 * 10'000LL};
-            // Use this-> to help the compiler resolve the template base class method
-            this->placeOrder(0, OrderInstruction::Buy, OrderType::Limit, Quantity{10},
+            Ticks limitPrice{261'000'000};
+            this->placeOrder(0, OrderInstruction::Buy, OrderType::Limit, Quantity{1},
                 TimeInForce::Day, limitPrice);
-            ordersPlaced++;
         }
-        quotesProcessed++;
+        quotesProcessed_++;
     }
+
+   private:
+    std::size_t quotesProcessed_;
 };
 
-// Ensure the return type is fully qualified
-sim::RunParams<sim::ConstantFillDistribution> setRunParams() {
-    sim::RunParams<sim::ConstantFillDistribution> params;
-
+RunParams<ConstantDistribution> setRunParams() {
+    RunParams<ConstantDistribution> params;
     params.depth = Depth{10};
     params.startingCash = Ticks{1'000'000'000};
-    params.buyFillRateDistribution = ConstantFillDistribution{100};
-    params.sellFillRateDistribution = ConstantFillDistribution{100};
+    params.buyFillRateDistribution = ConstantDistribution{100.0};
+    params.sellFillRateDistribution = ConstantDistribution{100.0};
     params.sendLatencyNanoseconds = 5'000'000;
     params.receiveLatencyNanoseconds = 5'000'000;
     params.leverageFactor = 1;
@@ -39,26 +37,29 @@ sim::RunParams<sim::ConstantFillDistribution> setRunParams() {
     params.enforceTradingHours = true;
     params.allowExtendedHoursTrading = true;
     params.daylightSavings = true;
-    params.verbosity = VerbosityLevel::STANDARD;
-    params.statisticsUpateRateSeconds = 60;
-
+    params.verbosityLevel = VerbosityLevel::STANDARD;
+    params.statisticsUpdateRateSeconds = 60;
     return params;
 }
 
+}  // namespace sim
+
 int main() {
     std::vector<std::string> filePaths = {
-        "/mnt/klmncap3/tmp_simulation_data/ubigint_AAPL_2025-10-24.parquet",
-        "/mnt/klmncap3/tmp_simulation_data/ubigint_AAPL_2025-10-27.parquet"};
+        "/mnt/klmncap3/tmp_simulation_data_indexed/ubigint_AAPL_2025-10-24.parquet",
+        "/mnt/klmncap3/tmp_simulation_data_indexed/ubigint_AAPL_2025-10-27.parquet"};
 
-    auto params = setRunParams();
+    auto params = sim::setRunParams();
 
-    auto dataManager =
-        std::make_unique<sim::SingleSymbolMarketDataParquet<10>>(filePaths, symbolIdMap);
+    auto dataManager = std::make_unique<sim::MarketDataParquet<10, 1>>(filePaths);
 
-    LimitOrderExampleStrategy strat;
-    sim::Engine<10, 1, sim::ConstantFillDistribution> engine(std::move(dataManager), params);
+    // std::unique_ptr<sim::IMarketData<10, 1>> baseDataManager = std::move(dataManager);
 
-    engine.run(strat, params.verbosityLevel);
+    sim::LimitOrderExampleStrategy strat{params};
+
+    sim::Engine<10, 1, sim::ConstantDistribution> engine(std::move(dataManager), params);
+
+    engine.run(strat, std::cout);
 
     return 0;
 }

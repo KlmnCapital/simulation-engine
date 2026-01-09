@@ -31,6 +31,8 @@ target_sources(simulation_engine
     FILE_SET CXX_MODULES FILES
         # Simulation engine
         include/simulation_engine/simulation_engine.cppm
+        include/simulation_engine/template_instantiations.cppm
+        include/simulation_engine/probability_distributions.cppm
         include/simulation_engine/types.cppm
         include/simulation_engine/quote.cppm
         include/simulation_engine/market_state.cppm
@@ -51,10 +53,10 @@ target_sources(simulation_engine
         lib/datetime/include/datetime/datetime_types.cppm
     PRIVATE
         # Simulation engine
-        src/market_data.cpp
         src/engine.cpp
         src/statistics.cpp
         src/portfolio.cpp
+        src/market_data.cpp
 
         # lib packages
         lib/datetime/src/date.cpp
@@ -77,7 +79,7 @@ target_link_libraries(simulation_engine PRIVATE
 )
 
 # --- Example Strategy Executables ---
-set(EXAMPLES limit_order_example) #market_order_example limit_order_example)
+set(EXAMPLES market_order_example limit_order_example)
 
 foreach(EXAMPLE ${EXAMPLES})
     add_executable(${EXAMPLE} examples/${EXAMPLE}.cpp)
