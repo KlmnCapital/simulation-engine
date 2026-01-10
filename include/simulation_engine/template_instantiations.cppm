@@ -10,8 +10,9 @@ import :portfolio;
 
 export namespace sim {
 
-// Note: Templates with implementations in .cpp files (Portfolio, Engine, Statistics, MarketDataParquet)
-// are explicitly instantiated in their respective .cpp files to avoid duplicate instantiation errors.
+// Note: Templates with implementations in .cpp files (Portfolio, Engine, Statistics,
+// MarketDataParquet) are explicitly instantiated in their respective .cpp files to avoid duplicate
+// instantiation errors.
 
 // RunParams struct instantiations (header-only)
 template struct RunParams<ConstantDistribution>;

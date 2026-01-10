@@ -87,8 +87,8 @@ template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distributio
 bool Engine<depth, numberOfSymbols, Distribution>::sufficientEquityForOrder(const NewOrder& order) {
     assert(order.orderType == OrderType::Limit || order.orderType == OrderType::Market);
 
-    return portfolio.sufficientEquityForOrder(marketData->bestBids(), marketData->bestAsks(),
-        order, this->estimateTotalOrderPrice(order), leverageFactor);
+    return portfolio.sufficientEquityForOrder(marketData->bestBids(), marketData->bestAsks(), order,
+        this->estimateTotalOrderPrice(order), leverageFactor);
 }
 
 template <std::size_t depth, std::uint16_t numberOfSymbols, typename Distribution>
@@ -159,8 +159,8 @@ OrderId Engine<depth, numberOfSymbols, Distribution>::placeOrder(std::uint16_t s
     order.price = price;
 
     Ticks estimatedPrice = estimateTotalOrderPrice(order);
-    bool sufficientEquityForOrder = portfolio.sufficientEquityForOrder(marketData->bestBids(),
-        marketData->bestAsks(), order, estimatedPrice, leverageFactor);
+    bool sufficientEquityForOrder = portfolio.sufficientEquityForOrder(
+        marketData->bestBids(), marketData->bestAsks(), order, estimatedPrice, leverageFactor);
 
     if (!sufficientEquityForOrder) {
         std::cout << "Conditions not met to place order!";
@@ -315,7 +315,8 @@ Quantity Engine<depth, numberOfSymbols, Distribution>::numberOfSharesToFillForLi
 
     double fillRate = determineFillRate(randomNumberGenerator, orderInstruction);
 
-    int minShares = std::min(numberOfSharesAvailable, static_cast<int>(desiredNumberOfShares.value()));
+    int minShares =
+        std::min(numberOfSharesAvailable, static_cast<int>(desiredNumberOfShares.value()));
     int sharesToFill = static_cast<int>(std::round(minShares * fillRate / 100.0));
     return Quantity{static_cast<std::uint32_t>(std::max(0, sharesToFill))};
 }
@@ -346,7 +347,8 @@ Quantity Engine<depth, numberOfSymbols, Distribution>::numberOfSharesToFillForMa
 
     double fillRate = determineFillRate(randomNumberGenerator, orderInstruction);
 
-    int minShares = std::min(numberOfSharesAvailable, static_cast<int>(desiredNumberOfShares.value()));
+    int minShares =
+        std::min(numberOfSharesAvailable, static_cast<int>(desiredNumberOfShares.value()));
     int sharesToFill = static_cast<int>(std::round(minShares * fillRate / 100.0));
     return Quantity{static_cast<std::uint32_t>(std::max(0, sharesToFill))};
 }
@@ -363,8 +365,8 @@ Ticks Engine<depth, numberOfSymbols, Distribution>::averageExecutionPrice(const 
                 Ticks askPrice = quote.getAsk(level);
                 Ticks askSize = quote.getAskSize(level);
                 Quantity sharesAtLevel = Quantity{static_cast<std::uint32_t>(askSize.value())};
-                Quantity sharesToUse = (totalShares + sharesAtLevel <= numberOfShares) 
-                    ? sharesAtLevel 
+                Quantity sharesToUse = (totalShares + sharesAtLevel <= numberOfShares)
+                    ? sharesAtLevel
                     : Quantity{numberOfShares.value() - totalShares.value()};
                 totalPrice += askPrice * sharesToUse;
                 totalShares += sharesToUse;
@@ -376,8 +378,8 @@ Ticks Engine<depth, numberOfSymbols, Distribution>::averageExecutionPrice(const 
                 Ticks bidPrice = quote.getBid(level);
                 Ticks bidSize = quote.getBidSize(level);
                 Quantity sharesAtLevel = Quantity{static_cast<std::uint32_t>(bidSize.value())};
-                Quantity sharesToUse = (totalShares + sharesAtLevel <= numberOfShares) 
-                    ? sharesAtLevel 
+                Quantity sharesToUse = (totalShares + sharesAtLevel <= numberOfShares)
+                    ? sharesAtLevel
                     : Quantity{numberOfShares.value() - totalShares.value()};
                 totalPrice += bidPrice * sharesToUse;
                 totalShares += sharesToUse;
@@ -411,8 +413,18 @@ ExecutionResult Engine<depth, numberOfSymbols, Distribution>::tryExecute(const N
         }
     }
 
+    // Skip creating fills when no shares are available to fill
+    if (numberOfSharesToFill.value() == 0) {
+        ExecutionResult result;
+        result.fills.clear();
+        result.remainingOrder = newOrder;
+        // If order quantity is 0, the order is complete (nothing left to fill)
+        result.isComplete = (newOrder.quantity.value() == 0);
+        return result;
+    }
+
     Ticks avgExecPrice = this->averageExecutionPrice(
-        marketData->getQuote(newOrder.symbol), newOrder.quantity, newOrder.instruction);
+        marketData->getQuote(newOrder.symbol), numberOfSharesToFill, newOrder.instruction);
 
     ExecutionResult result;
     result.fills.clear();
@@ -432,13 +444,11 @@ ExecutionResult Engine<depth, numberOfSymbols, Distribution>::tryExecute(const N
 
     Quantity remainingSharesUnfilled = newOrder.quantity - numberOfSharesToFill;
 
-    if (remainingSharesUnfilled.value() > 0) {
-        result.remainingOrder = newOrder;
-        result.remainingOrder.quantity = remainingSharesUnfilled;
-    }
+    // Always update remainingOrder.quantity to reflect actual remaining shares
+    result.remainingOrder.quantity = remainingSharesUnfilled;
+    result.isComplete = (remainingSharesUnfilled == 0);
 
     result.fills.push_back(fill);
-    result.isComplete = (remainingSharesUnfilled == 0);
 
     Ticks portfolioLiquidationValue =
         portfolio.netLiquidationValue(marketData->bestBids(), marketData->bestAsks());
@@ -549,8 +559,10 @@ void Engine<depth, numberOfSymbols, Distribution>::processPendingBuySellOrders()
                 pendingIt = pendingOrders.erase(pendingIt);
             } else {
                 // Order partially filled, update remaining quantity
-                pendingIt->order = result.remainingOrder;
-                ++pendingIt;
+                if (result.remainingOrder.quantity.value() != 0) {
+                    pendingIt->order = result.remainingOrder;
+                    ++pendingIt;
+                }
             }
         } else {
             ++pendingIt;

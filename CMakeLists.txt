@@ -7,6 +7,7 @@ project(simulation_engine LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_MODULE_STD ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Find Dependencies
 find_package(Arrow REQUIRED)

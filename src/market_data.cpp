@@ -90,22 +90,11 @@ bool MarketDataParquet<depth, numberOfSymbols>::loadData(const std::string& mark
             static_cast<std::uint64_t>(timestampColumn->Value(row) * timestampMultiplier)};
 
         for (std::size_t level = 0; level < depth; ++level) {
-            // Convert from data file scale to codebase scale (1,000,000)
-            // The data file appears to use a scale where prices are stored as integers
-            // but the exact scale factor needs to match what formatTicksAsDollars expects (1,000,000)
-            // Based on testing: if raw data shows ~2.64 but should be ~21.60, 
-            // the conversion factor is approximately 8.18, but this suggests the data
-            // file might already be partially scaled. For now, we'll use the data as-is
-            // and verify the actual scale factor from runtime data.
             std::int64_t rawBid = bidPriceColumn[level]->Value(row);
             std::int64_t rawAsk = askPriceColumn[level]->Value(row);
-            
-            // Convert from data file scale to codebase scale (1,000,000)
-            // Based on runtime evidence: prices need to be scaled by 81.0 to get correct dollar values
-            // Previous conversion (8.18) produced prices that were 10x too small
-            constexpr double SCALE_CONVERSION = 81.0;
-            quote.prices[level] = Ticks{static_cast<std::int64_t>(rawBid * SCALE_CONVERSION)};
-            quote.prices[depth + level] = Ticks{static_cast<std::int64_t>(rawAsk * SCALE_CONVERSION)};
+
+            quote.prices[level] = Ticks{rawBid};
+            quote.prices[depth + level] = Ticks{rawAsk};
             quote.sizes[level] = Ticks{static_cast<std::int64_t>(bidSizeColumn[level]->Value(row))};
             quote.sizes[depth + level] =
                 Ticks{static_cast<std::int64_t>(askSizeColumn[level]->Value(row))};
